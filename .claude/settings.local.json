@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:/Users/ajchavan/Music/shree-swami-samarth-catering-app/sss\" status)"
+    ]
+  }
+}
