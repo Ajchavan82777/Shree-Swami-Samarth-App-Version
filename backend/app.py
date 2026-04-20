@@ -8,13 +8,21 @@ from flask_jwt_extended import JWTManager
 from datetime import timedelta
 import os
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000", "http://localhost:5173"])
+
+_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
+CORS(app, origins=[o.strip() for o in _origins.split(",")])
 
 # Config
-app.config["JWT_SECRET_KEY"] = "sss-foods-secret-2024-demo"
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "sss-foods-secret-2024-demo")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
-app.config["SECRET_KEY"] = "sss-demo-secret"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "sss-demo-secret")
 
 jwt = JWTManager(app)
 
@@ -45,8 +53,8 @@ app.register_blueprint(staff_bp, url_prefix="/api/staff")
 app.register_blueprint(reports_bp, url_prefix="/api/reports")
 app.register_blueprint(health_bp, url_prefix="/api")
 
+from seed.seeder import seed_all
+seed_all()
+
 if __name__ == "__main__":
-    # Seed demo data on startup
-    from seed.seeder import seed_all
-    seed_all()
     app.run(debug=True, port=5000, host="0.0.0.0")
