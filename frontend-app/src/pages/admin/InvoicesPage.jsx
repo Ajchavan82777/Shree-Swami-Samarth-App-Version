@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, X, Printer, Eye, Trash2, Download, Edit2, Search, FileImage, FileText } from 'lucide-react';
+import { Plus, X, Printer, Eye, Trash2, Download, Edit2, Search, FileImage, FileText, Share2 } from 'lucide-react';
 import api, { fmt, fmtDate, cap } from '../../utils/api';
 import { InvoicePreview, FONTS, THEMES, TEMPLATES, GST_TYPES, gstLines, downloadPDF, downloadJPG, downloadWord } from '../../components/admin/InvoiceTemplates';
+import ShareModal from '../../components/admin/ShareModal';
 import { useContent } from '../../context/ContentContext';
 
 function getSavedDefaults() {
@@ -133,11 +134,13 @@ function PreviewModal({ invoice, onClose, company }) {
   const [themeName,   setThemeName]   = useState(_d.theme     || 'Gold & Maroon');
   const [font,        setFont]        = useState(_d.font      || 'Inter');
   const [orientation, setOrientation] = useState(_d.orientation || 'portrait');
+  const [footer,      setFooter]      = useState(_d.footer    || '');
   const [gstType,     setGstType]     = useState(invoice.gst_type || 'sgst_cgst');
   const [logo,        setLogo]        = useState('');
   const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);
   const [tab,         setTab]         = useState('preview');
   const [zoom,        setZoom]        = useState(1.0);
+  const [sharing,     setSharing]     = useState(false);
 
   const activeLogo = includeLogo ? (logo || settingsLogo) : '';
   const printRef = useRef(null);
@@ -215,6 +218,11 @@ function PreviewModal({ invoice, onClose, company }) {
             style={{ padding:'5px 10px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, width:180 }} />
         )}
 
+        {/* Footer text */}
+        <input value={footer} onChange={e=>setFooter(e.target.value)}
+          placeholder="Footer text (optional)…"
+          style={{ padding:'5px 10px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, width:200, minWidth:120 }} />
+
         {/* Zoom controls */}
         <div style={{ display:'flex', alignItems:'center', gap:2, background:'rgba(255,255,255,0.08)', borderRadius:6, padding:'2px 6px' }}>
           <button onClick={() => setZoom(z => Math.max(0.4, parseFloat((z-0.1).toFixed(1))))} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:16, lineHeight:1, padding:'2px 4px' }}>−</button>
@@ -224,6 +232,10 @@ function PreviewModal({ invoice, onClose, company }) {
         </div>
 
         <div style={{ marginLeft:'auto', display:'flex', gap:6, flexWrap:'wrap' }}>
+          <button onClick={() => setSharing(true)} title="Share Invoice"
+            style={{ padding:'6px 12px', borderRadius:6, background:'#16a34a', color:'#fff', border:'none', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
+            <Share2 size={13} /> Share
+          </button>
           <button onClick={handlePrint} title="Print" style={{ padding:'6px 12px', borderRadius:6, background:'rgba(255,255,255,0.12)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
             <Printer size={13} /> Print
           </button>
@@ -243,11 +255,22 @@ function PreviewModal({ invoice, onClose, company }) {
         </div>
       </div>
 
+      {sharing && (
+        <ShareModal
+          printRef={printRef}
+          doc={invoice}
+          docType="invoice"
+          orientation={orientation}
+          company={company}
+          onClose={() => setSharing(false)}
+        />
+      )}
+
       {/* Preview area */}
       <div style={{ flex:1, overflow:'auto', background:'#e5e7eb', padding: iw < 640 ? 8 : 24 }}>
         <div style={{ zoom: zoom }}>
           <div ref={printRef} style={{ minWidth: iw < 640 ? 680 : undefined, maxWidth:820, margin:'0 auto', background:'#fff', borderRadius:4, boxShadow:'0 4px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
-            <InvoicePreview invoice={invoice} template={template} themeName={themeName} font={font} logo={activeLogo} gstType={gstType} company={company} orientation={orientation} />
+            <InvoicePreview invoice={invoice} template={template} themeName={themeName} font={font} logo={activeLogo} gstType={gstType} company={company} orientation={orientation} footer={footer} />
           </div>
         </div>
       </div>
@@ -554,7 +577,7 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
             </div>
             <div style={{ marginTop:12, borderTop:'1px solid var(--border)', paddingTop:12 }}>
               <p style={{ fontSize:12, fontWeight:600, color:'var(--text-light)', marginBottom:8 }}>Page Margins (mm) — extra space added inside the page boundary</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8 }}>
+              <div className="admin-4col-grid">
                 {['top','right','bottom','left'].map(side=>(
                   <div key={side}>
                     <label style={{ fontSize:11, color:'var(--text-light)', display:'block', marginBottom:3, textTransform:'capitalize' }}>{side}</label>

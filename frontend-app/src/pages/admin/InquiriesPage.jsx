@@ -144,7 +144,7 @@ export default function InquiriesPage() {
               <button className="close-btn" onClick={closeModal}><X size={20} /></button>
             </div>
             <div className="modal-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="form-grid" style={{ gap: 16 }}>
                 {[
                   ['Name', selected.name], ['Company', selected.company_name || '—'],
                   ['Email', selected.email], ['Phone', selected.phone],

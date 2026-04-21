@@ -272,7 +272,7 @@ export default function ReportsPage() {
           </div>
 
           {/* ── Section 2: Invoice Summary ────────────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+          <div className="admin-2col-grid" style={{ marginBottom: 20 }}>
             <div className="card" style={{ padding: '20px 24px' }}>
               <SectionTitle>Invoice Summary</SectionTitle>
               {invoiceTotal === 0 ? (
@@ -297,7 +297,7 @@ export default function ReportsPage() {
             {/* ── Section 3: Business Overview ──────────────────────────────── */}
             <div className="card" style={{ padding: '20px 24px' }}>
               <SectionTitle>Business Overview</SectionTitle>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-grid" style={{ gap: 12 }}>
                 {[
                   { label: 'Customers',      value: data.total_customers       || 0, color: '#1d4ed8',       icon: '👥' },
                   { label: 'Staff Members',  value: data.total_staff           || 0, color: '#16a34a',       icon: '🧑‍🍳' },
@@ -318,7 +318,7 @@ export default function ReportsPage() {
           </div>
 
           {/* ── Section 4 & 5: Bookings + Packages ───────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+          <div className="admin-2col-grid" style={{ marginBottom: 20 }}>
             {/* Bookings by Event Type */}
             <div className="card" style={{ padding: '20px 24px' }}>
               <SectionTitle>Bookings by Event Type</SectionTitle>

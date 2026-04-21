@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, X, Printer, Eye, Trash2, Download, Edit2, FileText, Search, RefreshCw } from 'lucide-react';
+import { Plus, X, Printer, Eye, Trash2, Download, Edit2, FileText, Search, RefreshCw, Share2 } from 'lucide-react';
 import api, { fmt, fmtDate } from '../../utils/api';
 import {
   InvoicePreview, FONTS, THEMES, TEMPLATES, GST_TYPES, gstLines,
   downloadPDF, downloadJPG, downloadWord,
 } from '../../components/admin/InvoiceTemplates';
+import ShareModal from '../../components/admin/ShareModal';
 import { useContent } from '../../context/ContentContext';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -87,11 +88,13 @@ function PreviewModal({ quotation, onClose, company }) {
   const [themeName,   setThemeName]   = useState(_d.theme      || 'Gold & Maroon');
   const [font,        setFont]        = useState(_d.font       || 'Inter');
   const [orientation, setOrientation] = useState(_d.orientation || 'portrait');
+  const [footer,      setFooter]      = useState(_d.footer     || '');
   const [gstType,     setGstType]     = useState(quotation.gst_type || 'sgst_cgst');
   const [logo,        setLogo]        = useState('');
   const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);
   const [downloading, setDownloading] = useState(false);
   const [zoom,        setZoom]        = useState(1.0);
+  const [sharing,     setSharing]     = useState(false);
 
   const printRef = useRef(null);
   const activeLogo = includeLogo ? (logo || settingsLogo) : '';
@@ -200,6 +203,11 @@ function PreviewModal({ quotation, onClose, company }) {
             style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, width: 180 }} />
         )}
 
+        {/* Footer text */}
+        <input value={footer} onChange={e => setFooter(e.target.value)}
+          placeholder="Footer text (optional)…"
+          style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, width: 200, minWidth: 120 }} />
+
         {/* Zoom controls */}
         <div style={{ display:'flex', alignItems:'center', gap:2, background:'rgba(255,255,255,0.08)', borderRadius:6, padding:'2px 6px' }}>
           <button onClick={() => setZoom(z => Math.max(0.4, parseFloat((z-0.1).toFixed(1))))} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:16, lineHeight:1, padding:'2px 4px' }}>−</button>
@@ -209,6 +217,10 @@ function PreviewModal({ quotation, onClose, company }) {
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <button onClick={() => setSharing(true)} title="Share Quotation"
+            style={{ padding: '6px 12px', borderRadius: 6, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Share2 size={13} /> Share
+          </button>
           <button onClick={handlePrint} disabled={downloading}
             style={{ padding: '6px 14px', borderRadius: 6, background: 'var(--gold)', color: 'var(--dark)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
             <Printer size={13} /> Print
@@ -232,6 +244,17 @@ function PreviewModal({ quotation, onClose, company }) {
         </div>
       </div>
 
+      {sharing && (
+        <ShareModal
+          printRef={printRef}
+          doc={quotation}
+          docType="quotation"
+          orientation={orientation}
+          company={company}
+          onClose={() => setSharing(false)}
+        />
+      )}
+
       {/* Preview area */}
       <div style={{ flex: 1, overflow: 'auto', background: '#e5e7eb', padding: iw < 640 ? 8 : 24 }}>
         <div style={{ zoom: zoom }}>
@@ -245,6 +268,7 @@ function PreviewModal({ quotation, onClose, company }) {
               gstType={gstType}
               company={company}
               orientation={orientation}
+              footer={footer}
             />
           </div>
         </div>
@@ -693,7 +717,7 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
             </div>
             <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-light)', marginBottom: 8 }}>Page Margins (mm) — extra space added inside the page boundary</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+              <div className="admin-4col-grid">
                 {['top','right','bottom','left'].map(side => (
                   <div key={side}>
                     <label style={{ fontSize: 11, color: 'var(--text-light)', display: 'block', marginBottom: 3, textTransform: 'capitalize' }}>{side}</label>

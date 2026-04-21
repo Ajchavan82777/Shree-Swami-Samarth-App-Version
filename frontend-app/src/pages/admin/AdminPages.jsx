@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, X, Eye, Trash2, Download, ChevronDown, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, X, Eye, Trash2, Download, ChevronDown, Search, Shield, Users, Code2, Layers, Settings } from 'lucide-react';
 import api, { fmt, fmtDate, cap } from '../../utils/api';
 import { TEMPLATES, THEMES, FONTS } from '../../components/admin/InvoiceTemplates';
 import { downloadCSV, downloadExcel, downloadWordTable, downloadPrintTable } from '../../utils/tableExport';
@@ -545,7 +546,7 @@ export function ReportsPage() {
           </div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="admin-2col-grid">
         <div className="card">
           <h3 style={{ fontSize: 17, marginBottom: 16 }}>Invoice Summary</h3>
           {[['Paid', data.invoices.paid, 'var(--success)'], ['Partial', data.invoices.partial, 'var(--warning)'], ['Unpaid', data.invoices.unpaid, 'var(--error)']].map(([l, v, c]) => (
@@ -613,8 +614,40 @@ export function SettingsPage() {
     font:        saved.font        || 'Inter',
     orientation: saved.orientation || 'portrait',
     margins:     saved.margins     || { top: 0, right: 0, bottom: 0, left: 0 },
+    footer:      saved.footer      || '',
   });
   const [saved2, setSaved2] = useState(false);
+
+  const SOCIAL_FIELDS = [
+    { key: 'whatsapp',  label: 'WhatsApp',    placeholder: 'https://wa.me/919876543210' },
+    { key: 'instagram', label: 'Instagram',   placeholder: 'https://instagram.com/yourpage' },
+    { key: 'facebook',  label: 'Facebook',    placeholder: 'https://facebook.com/yourpage' },
+    { key: 'youtube',   label: 'YouTube',     placeholder: 'https://youtube.com/@yourchannel' },
+    { key: 'twitter',   label: 'Twitter / X', placeholder: 'https://twitter.com/yourhandle' },
+  ];
+  const [socialLinks, setSocialLinks] = useState({ whatsapp: '', instagram: '', facebook: '', youtube: '', twitter: '' });
+  const [socialSaved, setSocialSaved] = useState(false);
+
+  useEffect(() => {
+    api.get('/content/public').then(res => {
+      const sl = res.data.social_links || {};
+      setSocialLinks({
+        whatsapp:  sl.whatsapp  || '',
+        instagram: sl.instagram || '',
+        facebook:  sl.facebook  || '',
+        youtube:   sl.youtube   || '',
+        twitter:   sl.twitter   || '',
+      });
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveSocial = () => {
+    const items = SOCIAL_FIELDS.map(({ key }) => ({ section: 'social_links', key, value: socialLinks[key] }));
+    api.post('/content/batch', items).then(() => {
+      setSocialSaved(true);
+      setTimeout(() => setSocialSaved(false), 2500);
+    }).catch(() => alert('Failed to save social links.'));
+  };
 
   const [eventTypes, setEventTypes] = useState(loadEventTypes);
   const [newET,      setNewET]      = useState('');
@@ -655,10 +688,37 @@ export function SettingsPage() {
     setTimeout(() => setSaved2(false), 2000);
   };
 
+  const QUICK_LINKS = [
+    { to: '/admin/roles',     icon: Shield,   label: 'Roles & Access',    desc: 'Manage roles and page permissions' },
+    { to: '/admin/users',     icon: Users,    label: 'Users',             desc: 'Add, edit or remove admin users' },
+    { to: '/admin/developer', icon: Code2,    label: 'Developer Support', desc: 'API keys and developer tools' },
+    { to: '/admin/content',   icon: Layers,   label: 'Website Content',   desc: 'Edit public website text & media' },
+  ];
+
   return (
     <div>
       <div className="page-header"><h1 className="page-title">Settings</h1></div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+      {/* ── Quick Links ── */}
+      <div className="settings-quick-links" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 14, marginBottom: 24 }}>
+        {QUICK_LINKS.map(({ to, icon: Icon, label, desc }) => (
+          <Link key={to} to={to} style={{ textDecoration: 'none' }}>
+            <div className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '16px 18px', cursor: 'pointer', transition: 'box-shadow 0.15s, transform 0.15s', borderRadius: 12 }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(201,168,76,0.18)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = ''; e.currentTarget.style.transform = ''; }}>
+              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'var(--cream-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon size={18} color="var(--gold-dark)" />
+              </div>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--dark)', marginBottom: 2 }}>{label}</p>
+                <p style={{ fontSize: 12, color: 'var(--text-light)', lineHeight: 1.4 }}>{desc}</p>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <div className="settings-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div className="card">
           <h3 style={{ fontSize: 18, marginBottom: 20 }}>Company Information</h3>
           {[['Company Name', 'Shree Swami Samarth Food and Hospitality Services'], ['GSTIN', '27XXXXX1234X1Z5'], ['Phone', '+91 98765 43210'], ['Email', 'info@shreeswamisamarthfoods.com'], ['Address', 'Vikhroli, Mumbai – 400083, Maharashtra']].map(([k, v]) => (
@@ -744,7 +804,7 @@ export function SettingsPage() {
           </div>
           <div style={{ marginBottom: 20 }}>
             <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Default Page Margins (mm)</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, maxWidth: 400 }}>
+            <div className="admin-4col-grid" style={{ maxWidth: 400 }}>
               {['top','right','bottom','left'].map(side => (
                 <div key={side}>
                   <label style={{ fontSize: 11, color: 'var(--text-light)', display: 'block', marginBottom: 4, textTransform: 'capitalize' }}>{side}</label>
@@ -754,10 +814,40 @@ export function SettingsPage() {
               ))}
             </div>
           </div>
+          <div className="form-group" style={{ marginBottom: 20 }}>
+            <label className="form-label">Default Footer Text</label>
+            <textarea className="form-textarea" rows={3}
+              value={invDef.footer}
+              onChange={e => setDef('footer', e.target.value)}
+              placeholder="e.g. Thank you for your business! · Bank: HDFC · A/C: 1234567890 · IFSC: HDFC0001234 · Terms: Payment due within 15 days of invoice date." />
+            <p style={{ fontSize: 12, color: 'var(--text-light)', marginTop: 4 }}>Appears at the bottom of every invoice and quotation PDF. Can still be changed per-document.</p>
+          </div>
           <button className="btn btn-primary btn-sm" onClick={handleSaveDefaults}>
             {saved2 ? '✓ Saved!' : 'Save Invoice Defaults'}
           </button>
           {saved2 && <span style={{ marginLeft: 12, fontSize: 13, color: 'var(--success)' }}>Defaults saved — new invoices and quotations will use these settings.</span>}
+        </div>
+
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <h3 style={{ fontSize: 18, marginBottom: 6 }}>Social Media Links</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20 }}>
+            These links appear in the website footer. Leave a field blank to hide that platform icon.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 16, marginBottom: 20 }}>
+            {SOCIAL_FIELDS.map(({ key, label, placeholder }) => (
+              <div key={key} className="form-group">
+                <label className="form-label">{label}</label>
+                <input className="form-input" type="url"
+                  value={socialLinks[key]}
+                  onChange={e => setSocialLinks(s => ({ ...s, [key]: e.target.value }))}
+                  placeholder={placeholder} />
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={handleSaveSocial}>
+            {socialSaved ? '✓ Saved!' : 'Save Social Links'}
+          </button>
+          {socialSaved && <span style={{ marginLeft: 12, fontSize: 13, color: 'var(--success)' }}>Links saved — website footer will update immediately.</span>}
         </div>
       </div>
     </div>

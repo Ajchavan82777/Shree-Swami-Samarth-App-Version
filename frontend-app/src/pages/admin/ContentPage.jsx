@@ -496,10 +496,10 @@ export default function ContentPage() {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 56px - 40px)', gap: 0, margin: -20, overflow: 'hidden' }}>
+    <div className="content-page-layout" style={{ display: 'flex', height: 'calc(100vh - 56px - 40px)', gap: 0, margin: -20, overflow: 'hidden' }}>
 
       {/* ── Left: Section selector ───────────────────────── */}
-      <div style={{
+      <div className="content-page-sidebar" style={{
         width: 220, borderRight: '1px solid var(--border)',
         overflowY: 'auto', background: 'var(--white)', flexShrink: 0,
       }}>
@@ -512,6 +512,7 @@ export default function ContentPage() {
           <button
             key={sec.id}
             onClick={() => setActive(sec.id)}
+            className="content-page-sec-btn"
             style={{
               width: '100%', padding: '12px 14px',
               background: active === sec.id ? 'rgba(201,168,76,0.12)' : 'transparent',
@@ -522,18 +523,19 @@ export default function ContentPage() {
               fontSize: 14, fontWeight: active === sec.id ? 600 : 400,
               display: 'flex', alignItems: 'center', gap: 10,
               transition: 'background 0.15s',
+              whiteSpace: 'nowrap',
             }}
             onMouseEnter={e => { if (active !== sec.id) e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; }}
             onMouseLeave={e => { if (active !== sec.id) e.currentTarget.style.background = 'transparent'; }}
           >
             <span style={{ fontSize: 17 }}>{sec.icon}</span>
-            {sec.label}
+            <span className="content-sec-label">{sec.label}</span>
           </button>
         ))}
       </div>
 
       {/* ── Right: Editor ────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 28, background: 'var(--cream)' }}>
+      <div className="content-page-editor" style={{ flex: 1, overflowY: 'auto', padding: 28, background: 'var(--cream)' }}>
         {loading ? (
           <div className="loading">Loading content...</div>
         ) : (

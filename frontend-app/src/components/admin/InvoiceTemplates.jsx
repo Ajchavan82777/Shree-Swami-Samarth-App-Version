@@ -1371,6 +1371,7 @@ export function InvoicePreview({
   company     = {},
   orientation = 'portrait',
   margins     = { top: 0, right: 0, bottom: 0, left: 0 },
+  footer      = '',
 }) {
   const cfg = TEMPLATES.find(tp => tp.id === template) || TEMPLATES[0];
   const t   = THEMES[themeName] || THEMES['Gold & Maroon'];
@@ -1393,9 +1394,22 @@ export function InvoicePreview({
     paddingBottom: (margins.bottom || 0) * mmPx,
     paddingLeft:   (margins.left   || 0) * mmPx,
   };
+  const footerText = footer || '';
   return (
     <div style={{ minHeight: minH, display: 'flex', flexDirection: 'column', ...pad }}>
       <Cmp inv={invoice} t={t} font={font} logo={logo} gstType={gstType} company={co} v={cfg.v || 1} />
+      {footerText && (
+        <div style={{
+          marginTop: 'auto', paddingTop: 16,
+          borderTop: `1px solid ${t.light || '#eee'}`,
+          color: t.text || '#555', fontSize: 11,
+          textAlign: 'center', lineHeight: 1.6,
+          whiteSpace: 'pre-wrap',
+          fontFamily: `'${font}', sans-serif`,
+        }}>
+          {footerText}
+        </div>
+      )}
     </div>
   );
 }
@@ -1455,6 +1469,52 @@ export async function downloadPDF(element, filename, orientation = 'portrait') {
     console.error('PDF download error:', e);
     window.print();
   }
+}
+
+export async function getPDFBlob(element, filename, orientation = 'portrait') {
+  const html2canvas = (await import('html2canvas')).default;
+  const { jsPDF }   = await import('jspdf');
+
+  const canvas = await html2canvas(element, {
+    scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff',
+  });
+
+  const pdf    = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+  const pageW  = pdf.internal.pageSize.getWidth();
+  const pageH  = pdf.internal.pageSize.getHeight();
+  const mmToPx  = canvas.width / pageW;
+  const pageHpx = Math.floor(pageH * mmToPx);
+
+  const elRect  = element.getBoundingClientRect();
+  const pxScale = canvas.height / elRect.height;
+  const safeCuts = new Set([0, canvas.height]);
+  element.querySelectorAll('tr').forEach(row => {
+    const bottom = (row.getBoundingClientRect().bottom - elRect.top) * pxScale;
+    if (bottom > 0) safeCuts.add(Math.round(bottom));
+  });
+  const cuts = [...safeCuts].sort((a, b) => a - b);
+
+  let sliceStart = 0;
+  const slices = [];
+  while (sliceStart < canvas.height) {
+    const ideal = sliceStart + pageHpx;
+    if (ideal >= canvas.height) { slices.push([sliceStart, canvas.height]); break; }
+    const fit = cuts.filter(c => c <= ideal && c > sliceStart);
+    const cut = fit.length ? fit[fit.length - 1] : ideal;
+    slices.push([sliceStart, cut]);
+    sliceStart = cut;
+  }
+
+  slices.forEach(([y0, y1], i) => {
+    const h = y1 - y0;
+    const sc = document.createElement('canvas');
+    sc.width = canvas.width; sc.height = h;
+    sc.getContext('2d').drawImage(canvas, 0, y0, canvas.width, h, 0, 0, canvas.width, h);
+    if (i > 0) pdf.addPage();
+    pdf.addImage(sc.toDataURL('image/png'), 'PNG', 0, 0, pageW, h / mmToPx);
+  });
+
+  return pdf.output('blob');
 }
 
 export async function downloadJPG(element, filename) {

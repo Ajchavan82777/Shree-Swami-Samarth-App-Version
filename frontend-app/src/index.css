@@ -218,4 +218,64 @@ tr:hover td { background: var(--cream); }
   /* Modal: full screen on mobile */
   .modal-overlay { padding: 0; align-items: flex-end; }
   .modal         { max-height: 95vh; border-radius: 16px 16px 0 0; }
+
+  /* Settings page: collapse 2-col grid to 1-col */
+  .settings-main-grid { grid-template-columns: 1fr !important; }
+
+  /* Inline 2-col admin grids → 1-col on mobile */
+  .admin-2col-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Reusable admin grid helpers ─────────────────────────────── */
+.admin-2col-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.admin-4col-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+
+@media (max-width: 768px) {
+  .admin-2col-grid { grid-template-columns: 1fr !important; }
+  .admin-4col-grid { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* ── Content Page responsive layout ─────────────────────────── */
+.content-page-layout {
+  display: flex;
+  flex-direction: row;
+}
+
+@media (max-width: 768px) {
+  /* Stack sidebar on top as a horizontal scroll strip */
+  .content-page-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: -14px !important;
+  }
+  .content-page-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+  .content-page-sidebar > div { display: none !important; }
+  .content-page-sec-btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    padding: 10px 14px !important;
+    border-left: none !important;
+    border-bottom: 3px solid transparent !important;
+    white-space: nowrap !important;
+  }
+  .content-page-sec-btn[style*="rgba(201,168,76,0.12)"] {
+    border-bottom-color: var(--gold) !important;
+  }
+  .content-sec-label { display: inline !important; }
+  .content-page-editor {
+    padding: 16px !important;
+    min-height: 0 !important;
+    overflow-y: visible !important;
+  }
 }

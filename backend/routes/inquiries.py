@@ -32,16 +32,28 @@ def get_one(id):
 def create():
     d            = request.get_json() or {}
     is_corporate = d.get("event_type") == "corporate"
+    gc = d.get("guest_count")
     row = {
-        "name": d.get("name"), "email": d.get("email"), "phone": d.get("phone"),
-        "company_name": d.get("company_name"), "event_type": d.get("event_type"),
-        "service_type": d.get("service_type"), "event_date": d.get("event_date"),
-        "venue": d.get("venue"), "guest_count": d.get("guest_count"),
-        "budget_range": d.get("budget_range"), "meal_preference": d.get("meal_preference"),
-        "notes": d.get("notes"), "status": "new", "is_corporate": is_corporate,
+        "name":           d.get("name") or None,
+        "email":          d.get("email") or None,
+        "phone":          d.get("phone") or None,
+        "company_name":   d.get("company_name") or None,
+        "event_type":     d.get("event_type") or None,
+        "service_type":   d.get("service_type") or None,
+        "event_date":     d.get("event_date") or None,
+        "venue":          d.get("venue") or None,
+        "guest_count":    int(gc) if gc not in (None, "", 0, "0") else None,
+        "budget_range":   d.get("budget_range") or None,
+        "meal_preference": d.get("meal_preference") or None,
+        "notes":          d.get("notes") or None,
+        "status":         "new",
+        "is_corporate":   is_corporate,
     }
-    result = get_sb().table("inquiries").insert(row).execute()
-    return jsonify(result.data[0]), 201
+    try:
+        result = get_sb().table("inquiries").insert(row).execute()
+        return jsonify(result.data[0]), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 
 @inquiries_bp.route("/<int:id>", methods=["PUT"])
@@ -54,6 +66,11 @@ def update(id):
         "notes", "status", "is_corporate",
     }
     sets = {k: v for k, v in d.items() if k in allowed}
+    if "event_date" in sets:
+        sets["event_date"] = sets["event_date"] or None
+    if "guest_count" in sets:
+        gc = sets["guest_count"]
+        sets["guest_count"] = int(gc) if gc not in (None, "", 0, "0") else None
     if not sets:
         return jsonify({"message": "Nothing to update"}), 400
     result = get_sb().table("inquiries").update(sets).eq("id", id).execute()
