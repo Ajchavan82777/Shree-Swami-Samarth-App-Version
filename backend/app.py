@@ -37,6 +37,7 @@ def expired_token_cb(header, data):
 def missing_token_cb(reason):
     return jsonify({"message": "Missing token"}), 401
 
+from routes.content import content_bp
 from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.inquiries import inquiries_bp
@@ -50,6 +51,7 @@ from routes.staff import staff_bp
 from routes.reports import reports_bp
 from routes.health import health_bp
 
+app.register_blueprint(content_bp,     url_prefix="/api/content")
 app.register_blueprint(auth_bp,        url_prefix="/api/auth")
 app.register_blueprint(dashboard_bp,   url_prefix="/api/dashboard")
 app.register_blueprint(inquiries_bp,   url_prefix="/api/inquiries")

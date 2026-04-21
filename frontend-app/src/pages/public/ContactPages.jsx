@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin, Clock, CheckCircle } from 'lucide-react';
 import api from '../../utils/api';
+import { useContent } from '../../context/ContentContext';
 
 function PageHero({ subtitle, title, desc }) {
   return (
@@ -28,9 +29,16 @@ function FormInput({ label, ...props }) {
 
 // ---- CONTACT PAGE ----
 export function ContactPage() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
-  const [sent, setSent] = useState(false);
+  const [form, setForm]     = useState({ name: '', email: '', phone: '', subject: '', message: '' });
+  const [sent, setSent]     = useState(false);
   const [loading, setLoading] = useState(false);
+  const { get }             = useContent();
+
+  const phone        = get('contact', 'phone',         '+91 98765 43210');
+  const email        = get('contact', 'email',         'info@shreeswamisamarthfoods.com');
+  const address      = get('contact', 'address',       'Vikhroli, Mumbai – 400083, Maharashtra');
+  const hoursWeekday = get('contact', 'hours_weekday', 'Mon–Sat: 8 AM – 8 PM');
+  const hoursWeekend = get('contact', 'hours_weekend', 'Sun: 9 AM – 5 PM');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,7 +47,7 @@ export function ContactPage() {
       await api.post('/inquiries/', { ...form, event_type: 'general', status: 'new' });
       setSent(true);
     } catch {
-      setSent(true); // show success even on error for demo
+      setSent(true);
     } finally {
       setLoading(false);
     }
@@ -53,10 +61,10 @@ export function ContactPage() {
         <div>
           <h2 style={{ fontSize: 24, marginBottom: 24 }}>Get in Touch</h2>
           {[
-            { icon: Phone, label: 'Phone', value: '+91 98765 43210', link: 'tel:+919876543210' },
-            { icon: Mail, label: 'Email', value: 'info@shreeswamisamarthfoods.com', link: 'mailto:info@shreeswamisamarthfoods.com' },
-            { icon: MapPin, label: 'Address', value: 'Vikhroli, Mumbai – 400083, Maharashtra', link: null },
-            { icon: Clock, label: 'Hours', value: 'Mon–Sat: 8 AM – 8 PM\nSun: 9 AM – 5 PM', link: null },
+            { icon: Phone, label: 'Phone',   value: phone,                             link: `tel:${phone.replace(/\s/g,'')}` },
+            { icon: Mail,  label: 'Email',   value: email,                             link: `mailto:${email}` },
+            { icon: MapPin,label: 'Address', value: address,                           link: null },
+            { icon: Clock, label: 'Hours',   value: `${hoursWeekday}\n${hoursWeekend}`,link: null },
           ].map(({ icon: Icon, label, value, link }) => (
             <div key={label} style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
               <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--cream-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -98,6 +106,16 @@ export function ContactPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PhoneHint() {
+  const { get } = useContent();
+  const phone = get('contact', 'phone', '+91 98765 43210');
+  return (
+    <p style={{ fontSize: 12, color: 'var(--text-light)', textAlign: 'center', marginTop: 12 }}>
+      We respond within 24 hours. For urgent inquiries, call {phone}
+    </p>
   );
 }
 
@@ -184,15 +202,19 @@ export function RequestQuotePage() {
               <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '14px' }}>
                 {loading ? 'Submitting...' : '🚀 Submit Quote Request'}
               </button>
-              <p style={{ fontSize: 12, color: 'var(--text-light)', textAlign: 'center', marginTop: 12 }}>
-                We respond within 24 hours. For urgent inquiries, call +91 98765 43210
-              </p>
+              <PhoneHint />
             </form>
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function BookNowCall() {
+  const { get } = useContent();
+  const phone = get('contact', 'phone', '+91 98765 43210');
+  return <a href={`tel:${phone.replace(/\s/g,'')}`} className="btn btn-ghost">Call to Book Directly</a>;
 }
 
 // ---- BOOK NOW PAGE ----
@@ -208,7 +230,7 @@ export function BookNowPage() {
             To book, please first submit a quote request. Our team will prepare a detailed proposal, and once you approve, we'll confirm your booking and collect the advance payment.
           </p>
           <Link to="/request-quote" className="btn btn-primary" style={{ marginRight: 12 }}>Request Quote First</Link>
-          <a href="tel:+919876543210" className="btn btn-ghost">Call to Book Directly</a>
+          <BookNowCall />
         </div>
       </div>
     </div>

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, ArrowRight, Building2, Calendar, Users, Coffee, BookOpen, Package } from 'lucide-react';
 import api from '../../utils/api';
+import { useContent } from '../../context/ContentContext';
 
-// Shared hero — dark bg starts at top of page so navbar stays fully transparent
 function PageHero({ bg = 'linear-gradient(135deg, var(--dark) 0%, var(--dark-2) 100%)', subtitle, subtitleColor = 'var(--gold)', title, desc, descColor = '#C4A882', children }) {
   return (
     <div style={{ background: bg, padding: '160px 24px 80px', textAlign: 'center' }}>
@@ -16,7 +16,26 @@ function PageHero({ bg = 'linear-gradient(135deg, var(--dark) 0%, var(--dark-2) 
 }
 
 // ---- ABOUT PAGE ----
+const DEFAULT_VALUES = [
+  { icon: '🛡️', title: 'Hygiene & Food Safety First',    text: 'FSSAI certified kitchen with regular audits' },
+  { icon: '🍛', title: 'Authentic Regional Flavors',      text: 'Recipes rooted in tradition, cooked with care' },
+  { icon: '🤝', title: 'Professional, Courteous Service', text: 'On-time delivery, always' },
+  { icon: '♻️', title: 'Zero-Waste Kitchen Practices',   text: 'Responsible kitchen, minimal waste' },
+  { icon: '⏰', title: 'Timely, Reliable Delivery',       text: 'We show up every single time' },
+  { icon: '⭐', title: 'Client Satisfaction Guaranteed', text: 'Your happiness is our success' },
+];
+
 export function AboutPage() {
+  const { get, getJson } = useContent();
+  const story   = get('about', 'story',   'Founded in 2010 by Devendra Kamble in Vikhroli, Mumbai, Shree Swami Samarth Food and Hospitality Services has grown into a trusted name for corporate offices, weddings, and events across Maharashtra.');
+  const founder = get('about', 'founder', 'Devendra Kamble');
+  const location = get('about', 'location', 'Vikhroli, Mumbai');
+  const values  = getJson('about', 'values', DEFAULT_VALUES);
+
+  const stat_e = get('hero', 'stat_events', '5000+');
+  const stat_c = get('hero', 'stat_clients', '500+');
+  const stat_y = get('hero', 'stat_years', '14+');
+
   return (
     <div>
       <PageHero title="About Us" subtitle="Our Story" desc="Serving authentic, hygienic, and premium catering services since 2010" />
@@ -26,13 +45,10 @@ export function AboutPage() {
             <p className="section-title">Who We Are</p>
             <h2 className="section-heading" style={{ marginBottom: 20 }}>Passionate About Food &amp; Hospitality</h2>
             <p style={{ color: 'var(--text-light)', lineHeight: 1.8, marginBottom: 16 }}>
-              Shree Swami Samarth Food and Hospitality Services was founded in 2010 by <strong style={{ color: 'var(--text)' }}>Devendra Kamble</strong> with a simple mission: to bring exceptional, hygienic, and flavorful food to every table — corporate or social. Based in <strong style={{ color: 'var(--text)' }}>Vikhroli, Mumbai</strong>, we serve clients across Maharashtra.
+              {story.split('\n').map((line, i) => <span key={i}>{line}<br /></span>)}
             </p>
-            <p style={{ color: 'var(--text-light)', lineHeight: 1.8, marginBottom: 24 }}>
-              Over 14 years, we have served more than 5,000 events and 500 satisfied clients across Mumbai, Pune, and Maharashtra. From daily office meal subscriptions to grand wedding banquets, our commitment to quality and service remains unwavering.
-            </p>
-            <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-              {[['5000+', 'Events'], ['500+', 'Clients'], ['14+', 'Years']].map(([v, l]) => (
+            <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', marginTop: 24 }}>
+              {[[stat_e,'Events'], [stat_c,'Clients'], [stat_y,'Years']].map(([v, l]) => (
                 <div key={l}>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 32, color: 'var(--maroon)' }}>{v}</div>
                   <div style={{ fontSize: 13, color: 'var(--text-light)' }}>{l}</div>
@@ -42,10 +58,13 @@ export function AboutPage() {
           </div>
           <div style={{ background: 'var(--cream-dark)', borderRadius: 18, padding: 40, border: '1px solid var(--border)' }}>
             <h3 style={{ marginBottom: 20, fontSize: 22 }}>Our Core Values</h3>
-            {['Hygiene & Food Safety First', 'Authentic Regional Flavors', 'Professional, Courteous Service', 'Zero-Waste Kitchen Practices', 'Timely, Reliable Delivery', 'Client Satisfaction Guaranteed'].map(v => (
-              <div key={v} style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center' }}>
-                <CheckCircle size={16} style={{ color: 'var(--gold)' }} />
-                <span style={{ fontSize: 15 }}>{v}</span>
+            {values.map((v, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{v.icon}</span>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 2 }}>{v.title}</p>
+                  {v.text && <p style={{ fontSize: 13, color: 'var(--text-light)' }}>{v.text}</p>}
+                </div>
               </div>
             ))}
           </div>
@@ -57,15 +76,22 @@ export function AboutPage() {
 
 // ---- CORPORATE CATERING PAGE ----
 const CORP_SERVICES = [
-  { icon: Calendar, title: 'Daily Office Meal Plans', desc: 'Nutritious and tasty breakfast, lunch and dinner for your team, every working day.' },
-  { icon: Users, title: 'Executive Lunch Service', desc: 'Premium multi-course lunches for leadership teams, board meetings and VIP guests.' },
-  { icon: Package, title: 'Office Buffet Catering', desc: 'Lavish buffets for team celebrations, product launches, and year-end parties.' },
-  { icon: BookOpen, title: 'Conference & Training', desc: 'Full-day catering for conferences, workshops, seminars and training programs.' },
-  { icon: Coffee, title: 'Pantry & Snack Service', desc: 'Healthy morning and evening snacks, tea, coffee and fresh juices for your office.' },
-  { icon: Building2, title: 'Bulk Meal Service', desc: 'Large-scale meal service for factories, construction sites and large workforces.' },
+  { icon: Calendar,   title: 'Daily Office Meal Plans',  desc: 'Nutritious and tasty breakfast, lunch and dinner for your team, every working day.' },
+  { icon: Users,      title: 'Executive Lunch Service',  desc: 'Premium multi-course lunches for leadership teams, board meetings and VIP guests.' },
+  { icon: Package,    title: 'Office Buffet Catering',   desc: 'Lavish buffets for team celebrations, product launches, and year-end parties.' },
+  { icon: BookOpen,   title: 'Conference & Training',    desc: 'Full-day catering for conferences, workshops, seminars and training programs.' },
+  { icon: Coffee,     title: 'Pantry & Snack Service',   desc: 'Healthy morning and evening snacks, tea, coffee and fresh juices for your office.' },
+  { icon: Building2,  title: 'Bulk Meal Service',        desc: 'Large-scale meal service for factories, construction sites and large workforces.' },
 ];
 
 export function CorporateCateringPage() {
+  const { getJson } = useContent();
+  const benefits = getJson('corporate', 'benefits', [
+    'Timely delivery — always', 'FSSAI compliant kitchen', 'Monthly GST-ready invoices',
+    'Dedicated account manager', 'Custom menu planning', 'Diet-inclusive options',
+    'Scalable to any team size', 'Festive special meal plans',
+  ]);
+
   return (
     <div>
       <PageHero
@@ -100,8 +126,8 @@ export function CorporateCateringPage() {
         <div style={{ background: 'var(--dark)', borderRadius: 18, padding: 48, color: 'white' }}>
           <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, color: 'var(--gold)', marginBottom: 28, textAlign: 'center' }}>Why Companies Choose Us</h3>
           <div className="auto-grid-sm">
-            {['Timely delivery — always', 'FSSAI compliant kitchen', 'Monthly GST-ready invoices', 'Dedicated account manager', 'Custom menu planning', 'Diet-inclusive options', 'Scalable to any team size', 'Festive special meal plans'].map(b => (
-              <div key={b} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {benefits.map((b, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <CheckCircle size={15} style={{ color: 'var(--gold)', flexShrink: 0 }} />
                 <span style={{ fontSize: 14, color: '#C4A882' }}>{b}</span>
               </div>
@@ -116,20 +142,19 @@ export function CorporateCateringPage() {
 // ---- PACKAGES PAGE ----
 export function PackagesPage() {
   const [packages, setPackages] = useState([]);
-  const [filter, setFilter] = useState('all');
-  const [loading, setLoading] = useState(true);
+  const [filter, setFilter]     = useState('all');
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     api.get('/packages/public').then(r => { setPackages(r.data); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
-  const cats = ['all', 'corporate', 'wedding', 'events'];
+  const cats     = ['all', 'corporate', 'wedding', 'events'];
   const filtered = filter === 'all' ? packages : packages.filter(p => p.category === filter);
 
   return (
     <div>
       <PageHero title="Menu Packages" subtitle="Our Offerings" desc="Carefully crafted packages to suit every occasion and budget" />
-
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px' }}>
         <div style={{ display: 'flex', gap: 12, marginBottom: 40, flexWrap: 'wrap' }}>
           {cats.map(c => (
@@ -138,7 +163,6 @@ export function PackagesPage() {
             </button>
           ))}
         </div>
-
         {loading ? <div className="loading">Loading packages...</div> : (
           <div className="auto-grid">
             {filtered.map(pkg => (
@@ -174,36 +198,52 @@ export function PackagesPage() {
 }
 
 // ---- GALLERY PAGE ----
-const GALLERY_ITEMS = [
-  { label: 'Corporate Buffet Setup',    category: 'corporate', emoji: '🍽️' },
-  { label: 'Wedding Reception',         category: 'wedding',   emoji: '💒' },
-  { label: 'Live Dosa Counter',         category: 'event',     emoji: '🫓' },
-  { label: 'Executive Lunch',           category: 'corporate', emoji: '🥗' },
-  { label: 'Festive Thali',             category: 'event',     emoji: '🍱' },
-  { label: 'Wedding Mandap Catering',   category: 'wedding',   emoji: '🌸' },
-  { label: 'Office Daily Meals',        category: 'corporate', emoji: '🥘' },
-  { label: 'Conference Tea Break',      category: 'corporate', emoji: '☕' },
-  { label: 'Birthday Celebration',      category: 'event',     emoji: '🎂' },
+const DEFAULT_GALLERY = [
+  { emoji: '🍽️', title: 'Corporate Buffet Setup',  category: 'corporate', image: '' },
+  { emoji: '💒', title: 'Wedding Reception',        category: 'wedding',   image: '' },
+  { emoji: '🫓', title: 'Live Dosa Counter',         category: 'events',    image: '' },
+  { emoji: '🥗', title: 'Executive Lunch',           category: 'corporate', image: '' },
+  { emoji: '🍱', title: 'Festive Thali',             category: 'events',    image: '' },
+  { emoji: '🌸', title: 'Wedding Mandap Catering',  category: 'wedding',   image: '' },
+  { emoji: '🥘', title: 'Office Daily Meals',        category: 'corporate', image: '' },
+  { emoji: '☕', title: 'Conference Tea Break',      category: 'corporate', image: '' },
+  { emoji: '🎂', title: 'Birthday Celebration',     category: 'events',    image: '' },
 ];
 
 export function GalleryPage() {
+  const { getJson } = useContent();
+  const items = getJson('gallery', 'items', DEFAULT_GALLERY);
+
   return (
     <div>
       <PageHero title="Our Gallery" desc="A glimpse into the events we have crafted with love and expertise" />
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 20 }}>
-          {GALLERY_ITEMS.map(item => (
-            <div key={item.label} style={{
-              background: 'var(--cream-dark)', borderRadius: 14, height: 220,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              border: '1px solid var(--border)', fontSize: 60, gap: 12,
+          {items.map((item, i) => (
+            <div key={i} style={{
+              background: 'var(--cream-dark)', borderRadius: 14,
+              border: '1px solid var(--border)', overflow: 'hidden',
               transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer',
             }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.boxShadow = 'var(--shadow-lg)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
-              <span>{item.emoji}</span>
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 15, fontWeight: 600 }}>{item.label}</p>
+              {item.image ? (
+                <img
+                  src={item.image} alt={item.title}
+                  style={{ width: '100%', height: 180, objectFit: 'cover' }}
+                  onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
+              ) : null}
+              <div style={{
+                height: item.image ? 'auto' : 180,
+                display: item.image ? 'none' : 'flex',
+                flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                fontSize: 60,
+              }}>
+                {item.emoji}
+              </div>
+              <div style={{ padding: '14px 16px' }}>
+                <p style={{ fontSize: 15, fontWeight: 600 }}>{item.title}</p>
                 <span className={`badge badge-${item.category}`} style={{ marginTop: 6 }}>{item.category}</span>
               </div>
             </div>
@@ -247,28 +287,32 @@ export function TestimonialsPage() {
 }
 
 // ---- FAQ PAGE ----
-const FAQS = [
-  ['What is the minimum guest count?', 'Our minimum is 25 persons for most packages. Some premium packages require 50+. We can sometimes accommodate smaller groups—contact us to discuss.'],
-  ['Do you provide Jain and vegan options?', 'Yes! We cater to Jain, vegan, diabetic-friendly, and all dietary preferences. Please mention this when booking.'],
-  ['How far in advance should I book?', 'For weddings: 2–3 months. Corporate events: 2–4 weeks. Recurring office meals: 1 week. We recommend early booking for better date availability.'],
-  ['Do you handle outdoor events?', 'Yes, we provide full setup for outdoor venues, including equipment, serving staff, and logistics.'],
-  ['Is GST billing available for corporates?', 'Absolutely. We provide GST-compliant invoices for all corporate clients. Our GSTIN is available on request.'],
-  ['What areas do you serve?', 'We primarily serve Mumbai (Vikhroli and surrounding areas), Pune, Nashik, and nearby Maharashtra districts. For outstation events, contact us for a custom quote.'],
-  ['Can we do a food tasting before booking?', 'Yes, we offer tasting sessions for wedding bookings above ₹1 lakh. Corporate clients can request a sample meal tray.'],
+const DEFAULT_FAQS = [
+  { q: 'What is the minimum guest count?',          a: 'Our minimum is 25 persons for most packages. Contact us to discuss smaller groups.' },
+  { q: 'Do you provide Jain and vegan options?',    a: 'Yes! We cater to Jain, vegan, diabetic-friendly, and all dietary preferences.' },
+  { q: 'How far in advance should I book?',         a: 'Weddings: 2–3 months. Corporate: 2–4 weeks. Recurring meals: 1 week.' },
+  { q: 'Do you handle outdoor events?',             a: 'Yes, we provide full setup for outdoor venues including equipment and serving staff.' },
+  { q: 'Is GST billing available for corporates?',  a: 'Absolutely. We provide GST-compliant invoices for all corporate clients.' },
+  { q: 'What areas do you serve?',                  a: 'Mumbai, Pune, Nashik, and nearby Maharashtra districts.' },
+  { q: 'Can we do a food tasting before booking?',  a: 'Yes, for wedding bookings above ₹1 lakh. Corporate clients can request a sample tray.' },
+  { q: 'What payment methods do you accept?',       a: 'Cash, NEFT/RTGS, UPI, and cheque payments.' },
 ];
 
 export function FAQPage() {
-  const [open, setOpen] = useState(null);
+  const [open, setOpen]    = useState(null);
+  const { getJson }        = useContent();
+  const faqs               = getJson('faq', 'items', DEFAULT_FAQS);
+
   return (
     <div>
       <PageHero title="FAQ" desc="Answers to your most common questions" />
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '60px 24px' }}>
-        {FAQS.map(([q, a], i) => (
+        {faqs.map((item, i) => (
           <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 12, marginBottom: 12, overflow: 'hidden' }}>
             <button onClick={() => setOpen(open === i ? null : i)} style={{ width: '100%', textAlign: 'left', padding: '18px 20px', background: open === i ? 'var(--cream-dark)' : 'var(--white)', border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 600, fontFamily: 'Playfair Display, serif', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              {q} <span style={{ fontSize: 22, color: 'var(--gold)', lineHeight: 1 }}>{open === i ? '−' : '+'}</span>
+              {item.q} <span style={{ fontSize: 22, color: 'var(--gold)', lineHeight: 1 }}>{open === i ? '−' : '+'}</span>
             </button>
-            {open === i && <div style={{ padding: '0 20px 20px', fontSize: 15, color: 'var(--text-light)', lineHeight: 1.7 }}>{a}</div>}
+            {open === i && <div style={{ padding: '0 20px 20px', fontSize: 15, color: 'var(--text-light)', lineHeight: 1.7 }}>{item.a}</div>}
           </div>
         ))}
       </div>
@@ -284,8 +328,8 @@ export function ServicesPage() {
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
         {[
           { title: 'Corporate Catering', path: '/corporate-catering', desc: 'Daily meal plans, executive lunches, office buffets, conference catering and more for businesses of all sizes.' },
-          { title: 'Wedding Catering', path: '/wedding-catering', desc: 'Grand wedding feasts with multi-course menus, live counters, and professional service for memorable celebrations.' },
-          { title: 'Event Catering', path: '/event-catering', desc: 'Birthday parties, anniversaries, social gatherings, cultural events, and private celebrations.' },
+          { title: 'Wedding Catering',   path: '/wedding-catering',   desc: 'Grand wedding feasts with multi-course menus, live counters, and professional service for memorable celebrations.' },
+          { title: 'Event Catering',     path: '/event-catering',     desc: 'Birthday parties, anniversaries, social gatherings, cultural events, and private celebrations.' },
         ].map(s => (
           <div key={s.title} className="card" style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
             <div>
@@ -313,7 +357,7 @@ export function WeddingCateringPage() {
       </PageHero>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
         <div className="auto-grid">
-          {['Haldi & Mehendi Catering', 'Sangeet Evening Snacks', 'Reception Grand Buffet', 'Live Counters (Dosa, Chat, Pasta)', 'Traditional Thali Service', 'Cocktail & Welcome Drinks', 'Varmala Ceremony Refreshments', 'Post-Wedding Lunch'].map(s => (
+          {['Haldi & Mehendi Catering','Sangeet Evening Snacks','Reception Grand Buffet','Live Counters (Dosa, Chat, Pasta)','Traditional Thali Service','Cocktail & Welcome Drinks','Varmala Ceremony Refreshments','Post-Wedding Lunch'].map(s => (
             <div key={s} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '16px 20px', background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)' }}>
               <CheckCircle size={18} style={{ color: 'var(--gold)', flexShrink: 0 }} />
               <span style={{ fontSize: 15 }}>{s}</span>
@@ -341,7 +385,7 @@ export function EventCateringPage() {
       </PageHero>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
         <div className="auto-grid">
-          {['Birthday Parties', 'Anniversary Celebrations', 'Festive Get-Togethers', 'Cultural Events', 'Sports Events', 'Alumni Meets', 'Farewell Parties', 'Pooja & Religious Events'].map(e => (
+          {['Birthday Parties','Anniversary Celebrations','Festive Get-Togethers','Cultural Events','Sports Events','Alumni Meets','Farewell Parties','Pooja & Religious Events'].map(e => (
             <div key={e} className="card" style={{ textAlign: 'center', padding: '28px 20px' }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>🎉</div>
               <h4 style={{ fontSize: 16 }}>{e}</h4>

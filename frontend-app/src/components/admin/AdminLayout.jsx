@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, MessageSquare, Users, Building2, Calendar,
   FileText, Receipt, Package, UserCheck, BarChart2, Settings,
-  LogOut, Menu, X, ChefHat
+  LogOut, Menu, X, ChefHat, Layers
 } from 'lucide-react';
 
 const navItems = [
@@ -18,6 +18,7 @@ const navItems = [
   { path: '/admin/packages',   icon: Package,         label: 'Packages' },
   { path: '/admin/staff',      icon: UserCheck,       label: 'Staff' },
   { path: '/admin/reports',    icon: BarChart2,       label: 'Reports' },
+  { path: '/admin/content',    icon: Layers,          label: 'Website Content' },
   { path: '/admin/settings',   icon: Settings,        label: 'Settings' },
 ];
 

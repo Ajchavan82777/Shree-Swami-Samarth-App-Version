@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS staff            CASCADE;
 DROP TABLE IF EXISTS customers        CASCADE;
 DROP TABLE IF EXISTS testimonials     CASCADE;
 DROP TABLE IF EXISTS users            CASCADE;
+DROP TABLE IF EXISTS site_content     CASCADE;
 
 -- ── Drop triggers/functions ──────────────────────────────────
 DROP FUNCTION IF EXISTS set_invoice_number() CASCADE;
@@ -209,7 +210,20 @@ CREATE TABLE testimonials (
     role        VARCHAR(255),
     rating      INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     text        TEXT    NOT NULL,
+    approved    BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE site_content (
+    id         SERIAL PRIMARY KEY,
+    section    VARCHAR(100) NOT NULL,
+    key        VARCHAR(100) NOT NULL,
+    label      VARCHAR(255) NOT NULL DEFAULT '',
+    value      TEXT         NOT NULL DEFAULT '',
+    type       VARCHAR(50)  NOT NULL DEFAULT 'text',
+    sort_order INTEGER      NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    UNIQUE(section, key)
 );
 
 -- ============================================================
@@ -243,3 +257,6 @@ CREATE INDEX idx_packages_category       ON packages(category);
 CREATE INDEX idx_packages_active         ON packages(active);
 
 CREATE INDEX idx_staff_active            ON staff(active);
+
+CREATE INDEX idx_site_content_section   ON site_content(section);
+CREATE INDEX idx_testimonials_approved  ON testimonials(approved);

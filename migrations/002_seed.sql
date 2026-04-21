@@ -154,9 +154,72 @@ SELECT i.id, i.invoice_number, 100000, 'Cheque', '2024-03-26', 'CHQ00123456', 'B
 FROM invoices i WHERE i.customer_name = 'Deepika Rao';
 
 -- ── Testimonials ─────────────────────────────────────────────
-INSERT INTO testimonials (name, company, role, rating, text) VALUES
-('Kavita Nair',    'Tech Mahindra',  'HR Manager',           5, 'Shree Swami Samarth has been our trusted catering partner for over a year. Their daily meal service is hygienic, timely, and delicious. Our employees absolutely love it!'),
-('Deepika Rao',    NULL,             'Bride',                5, 'Our wedding catering was absolutely perfect! Every dish was restaurant quality and the service was impeccable. Highly recommend for weddings!'),
-('Ravi Shetty',    'Infosys BPM',   'Operations Head',      5, 'Professional, punctual, and palate-pleasing! Their corporate buffets for our office events always receive great feedback. True hospitality experts.'),
-('Manish Gupta',   NULL,             'Client',               4, 'Organized our anniversary party with them. The food quality and live counters were exceptional. Will definitely book again for future events.'),
-('Dr. Suresh Patil','XLRI Institute','Conference Coordinator',5,'They managed catering for our 2-day national conference flawlessly. Timely service, quality food, and professional staff. Outstanding!');
+INSERT INTO testimonials (name, company, role, rating, text, approved) VALUES
+('Kavita Nair',    'Tech Mahindra',  'HR Manager',            5, 'Shree Swami Samarth has been our trusted catering partner for over a year. Their daily meal service is hygienic, timely, and delicious. Our employees absolutely love it!', TRUE),
+('Deepika Rao',    NULL,             'Bride',                 5, 'Our wedding catering was absolutely perfect! Every dish was restaurant quality and the service was impeccable. Highly recommend for weddings!', TRUE),
+('Ravi Shetty',    'Infosys BPM',   'Operations Head',       5, 'Professional, punctual, and palate-pleasing! Their corporate buffets for our office events always receive great feedback. True hospitality experts.', TRUE),
+('Manish Gupta',   NULL,             'Client',                4, 'Organized our anniversary party with them. The food quality and live counters were exceptional. Will definitely book again for future events.', TRUE),
+('Dr. Suresh Patil','XLRI Institute','Conference Coordinator',5, 'They managed catering for our 2-day national conference flawlessly. Timely service, quality food, and professional staff. Outstanding!', TRUE);
+
+-- ── Site Content (CMS defaults) ───────────────────────────────
+INSERT INTO site_content (section, key, label, value, type, sort_order) VALUES
+-- Hero
+('hero','badge',              'Badge Text',           'Est. 2010 • Vikhroli, Mumbai',                                                                                    'text',     1),
+('hero','tagline',            'Main Headline',        'Premium Catering Crafted with Care',                                                                              'text',     2),
+('hero','description',        'Sub Description',      'Corporate meals, wedding feasts, and special events — we bring exceptional food and hospitality to every occasion.','textarea', 3),
+('hero','stat_events',        'Events Count',         '5000+',   'text',  4),
+('hero','stat_events_label',  'Events Label',         'Events Served',   'text',  5),
+('hero','stat_clients',       'Clients Count',        '500+',    'text',  6),
+('hero','stat_clients_label', 'Clients Label',        'Happy Clients',   'text',  7),
+('hero','stat_years',         'Years Count',          '14+',     'text',  8),
+('hero','stat_years_label',   'Years Label',          'Years Experience','text',  9),
+('hero','stat_menu',          'Menu Items Count',     '50+',     'text', 10),
+('hero','stat_menu_label',    'Menu Items Label',     'Menu Items',      'text', 11),
+
+-- Contact
+('contact','phone',         'Phone Number',  '+91 98765 43210',                       'text',     1),
+('contact','email',         'Email Address', 'info@shreeswamisamarthfoods.com',        'text',     2),
+('contact','address',       'Address',       'Vikhroli, Mumbai – 400083, Maharashtra', 'textarea', 3),
+('contact','hours_weekday', 'Weekday Hours', 'Mon–Sat: 8 AM – 8 PM',                  'text',     4),
+('contact','hours_weekend', 'Weekend Hours', 'Sun: 9 AM – 5 PM',                      'text',     5),
+
+-- Company
+('company','name',           'Full Company Name',      'Shree Swami Samarth Food and Hospitality Services',                                                                                        'text',     1),
+('company','short_name',     'Short Name',             'SSS Foods',                                                                                                                               'text',     2),
+('company','tagline',        'Company Tagline',        'Serving with Love & Hygiene since 2010',                                                                                                  'text',     3),
+('company','gstin',          'GSTIN Number',           '27XXXXX1234X1Z5',                                                                                                                         'text',     4),
+('company','description',    'Company Description',    'Premium catering solutions for corporate offices, weddings, and special events across Mumbai & Maharashtra since 2010. Founded by Devendra Kamble.', 'textarea', 5),
+('company','invoice_prefix', 'Invoice Number Prefix',  'SSS-INV-',                                                                                                                               'text',     6),
+('company','tax_rate',       'Default Tax Rate (%)',   '5',                                                                                                                                       'text',     7),
+('company','due_days',       'Invoice Due Days',       '15',                                                                                                                                      'text',     8),
+
+-- About
+('about','story',        'Company Story',     'Founded in 2010 by Devendra Kamble in Vikhroli, Mumbai, Shree Swami Samarth Food and Hospitality Services has grown into a trusted name for corporate offices, weddings, and events across Maharashtra. Over 14 years we have served 5000+ events and 500+ satisfied clients.', 'textarea', 1),
+('about','founded_year', 'Founded Year',      '2010',            'text',     2),
+('about','founder',      'Founder Name',      'Devendra Kamble', 'text',     3),
+('about','location',     'Location',          'Vikhroli, Mumbai','text',     4),
+('about','mission',      'Mission Statement', 'To deliver authentic flavors, professional service, and memorable dining experiences for every event — big or small.', 'textarea', 5),
+('about','values',       'Core Values',       '[{"icon":"🛡️","title":"Hygiene First","text":"FSSAI certified kitchen with regular audits"},{"icon":"🍛","title":"Authentic Flavors","text":"Recipes rooted in tradition, cooked with care"},{"icon":"🤝","title":"Professional Service","text":"Courteous staff, on-time delivery, always"},{"icon":"♻️","title":"Zero-Waste","text":"Responsible kitchen, minimal waste"},{"icon":"⏰","title":"Always Reliable","text":"We show up every single time"},{"icon":"⭐","title":"Client Satisfaction","text":"Your happiness is our measure of success"}]', 'json', 6),
+
+-- Services
+('services','items','Service Cards','[{"icon":"🏢","title":"Corporate Catering","description":"Daily meal plans, executive lunches, conference catering and bulk employee meals for offices.","link":"/corporate-catering"},{"icon":"💒","title":"Wedding Catering","description":"Memorable wedding feasts with multi-course menus, live counters and impeccable service.","link":"/wedding-catering"},{"icon":"🎉","title":"Event Catering","description":"Birthdays, anniversaries, social gatherings — we cater every celebration perfectly.","link":"/event-catering"},{"icon":"📦","title":"Custom Packages","description":"Bespoke menus crafted to your taste, dietary needs and event size.","link":"/packages"}]','json',1),
+
+-- Why Choose Us
+('why_us','items','Why Choose Us','[{"icon":"✅","title":"FSSAI Certified","text":"Fully licensed and compliant with all food safety standards."},{"icon":"⏰","title":"Always On Time","text":"99% on-time delivery record across 5000+ events served."},{"icon":"👨‍🍳","title":"Expert Chefs","text":"Team of experienced chefs with 10+ years of expertise."},{"icon":"🏆","title":"14+ Years Experience","text":"Trusted by 500+ clients across Maharashtra and beyond."},{"icon":"📈","title":"Scalable Service","text":"From 25 to 5000 guests — we handle any scale with ease."},{"icon":"🍽️","title":"Custom Menus","text":"Jain, vegan, diabetic, and all diet preferences accommodated."}]','json',1),
+
+-- Booking Steps
+('steps','items','Booking Steps','[{"icon":"📝","title":"Submit Inquiry","description":"Fill our simple form with your event details and preferences."},{"icon":"💬","title":"Get Custom Quote","description":"Our team prepares a detailed, tailored quotation within 24 hours."},{"icon":"✅","title":"Confirm Booking","description":"Review, approve and secure your date with advance payment."},{"icon":"🎉","title":"Enjoy Your Event","description":"Relax while our team delivers flawless catering at your venue."}]','json',1),
+
+-- Corporate
+('corporate','pricing','Pricing Plans','[{"plan":"Daily Meal Plan","price":"₹150","unit":"/person/day"},{"plan":"Executive Lunch","price":"₹350","unit":"/person"},{"plan":"Office Buffet","price":"₹450","unit":"/person"},{"plan":"Conference Catering","price":"₹200","unit":"/person"}]','json',1),
+('corporate','benefits','Benefits List','["Timely delivery — always","FSSAI compliant kitchen","Monthly GST-ready invoices","Dedicated account manager","Custom menu planning","Diet-inclusive options","Scalable to any team size","Festive special meal plans"]','json',2),
+
+-- FAQ
+('faq','items','FAQ Items','[{"q":"What is the minimum guest count?","a":"Our minimum is 25 persons for most packages. Some premium packages require 50+. Contact us to discuss smaller groups."},{"q":"Do you provide Jain and vegan options?","a":"Yes! We cater to Jain, vegan, diabetic-friendly, and all dietary preferences. Please mention this when booking."},{"q":"How far in advance should I book?","a":"For weddings: 2–3 months. Corporate events: 2–4 weeks. Recurring office meals: 1 week. Early booking ensures date availability."},{"q":"Do you handle outdoor events?","a":"Yes, we provide full setup for outdoor venues including equipment, serving staff, and logistics."},{"q":"Is GST billing available for corporates?","a":"Absolutely. We provide GST-compliant invoices for all corporate clients. Our GSTIN is available on request."},{"q":"What areas do you serve?","a":"We primarily serve Mumbai, Pune, Nashik, and nearby Maharashtra districts. Contact us for outstation events."},{"q":"Can we do a food tasting before booking?","a":"Yes, we offer tasting sessions for wedding bookings above Rs 1 lakh. Corporate clients can request a sample meal tray."},{"q":"What payment methods do you accept?","a":"We accept cash, bank transfer (NEFT/RTGS), UPI, and cheque payments."}]','json',1),
+
+-- Gallery
+('gallery','items','Gallery Items','[{"emoji":"🍽️","title":"Corporate Buffet Setup","category":"corporate","image":""},{"emoji":"💒","title":"Wedding Reception","category":"wedding","image":""},{"emoji":"🫓","title":"Live Dosa Counter","category":"events","image":""},{"emoji":"🥗","title":"Executive Lunch","category":"corporate","image":""},{"emoji":"🍱","title":"Festive Thali","category":"events","image":""},{"emoji":"🌸","title":"Wedding Mandap Catering","category":"wedding","image":""},{"emoji":"🥘","title":"Office Daily Meals","category":"corporate","image":""},{"emoji":"☕","title":"Conference Tea Break","category":"corporate","image":""},{"emoji":"🎂","title":"Birthday Celebration","category":"events","image":""}]','json',1),
+
+-- Footer
+('footer','description','Footer Description','Premium catering solutions for corporate offices, weddings, and special events across Mumbai & Maharashtra since 2010. Founded by Devendra Kamble.','textarea',1),
+('footer','copyright',  'Copyright Text',    '© 2024 Shree Swami Samarth Food and Hospitality Services. All rights reserved.','text',2);

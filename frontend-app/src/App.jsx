@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ContentProvider } from './context/ContentContext';
 import Navbar from './components/public/Navbar';
 import Footer from './components/public/Footer';
 import HomePage from './pages/public/HomePage';
@@ -11,6 +12,7 @@ import DashboardPage from './pages/admin/DashboardPage';
 import InquiriesPage from './pages/admin/InquiriesPage';
 import InvoicesPage from './pages/admin/InvoicesPage';
 import { CorporatePage, BookingsPage, CustomersPage, PackagesAdminPage, StaffPage, QuotationsPage, ReportsPage, SettingsPage } from './pages/admin/AdminPages';
+import ContentPage from './pages/admin/ContentPage';
 
 function PublicLayout({ children }) {
   return (<><Navbar /><main style={{ minHeight: '100vh' }}>{children}</main><Footer /></>);
@@ -25,6 +27,7 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
+      <ContentProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
@@ -53,9 +56,11 @@ function App() {
           <Route path="/admin/staff" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
           <Route path="/admin/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/admin/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+          <Route path="/admin/content"  element={<ProtectedRoute><ContentPage /></ProtectedRoute>} />
           <Route path="*" element={<PublicLayout><div style={{textAlign:'center',padding:'120px 24px'}}><h1 style={{fontFamily:'Playfair Display,serif',fontSize:80,color:'var(--gold)'}}>404</h1><p>Page not found</p><a href="/" className="btn btn-primary">Go Home</a></div></PublicLayout>} />
         </Routes>
       </BrowserRouter>
+      </ContentProvider>
     </AuthProvider>
   );
 }
