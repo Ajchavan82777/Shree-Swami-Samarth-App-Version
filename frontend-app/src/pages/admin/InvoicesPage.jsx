@@ -1,225 +1,481 @@
-import { useState, useEffect } from 'react';
-import { Plus, X, Printer, Eye, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Plus, X, Printer, Eye, Trash2, Download, Palette, Type, ChevronDown, Search } from 'lucide-react';
 import api, { fmt, fmtDate, cap } from '../../utils/api';
+import { InvoicePreview, FONTS, THEMES, TEMPLATES, GST_TYPES, gstLines } from '../../components/admin/InvoiceTemplates';
+import { useContent } from '../../context/ContentContext';
 
-function InvoicePrintView({ invoice, onClose }) {
-  const handlePrint = () => window.print();
+const EVENT_TYPES = [
+  'Wedding','Reception','Corporate Lunch','Corporate Dinner','Daily Meal Plan',
+  'Conference Buffet','Birthday Party','Anniversary','Cocktail Party',
+  'Baby Shower','Engagement','Farewell','Award Ceremony','Product Launch',
+  'Team Outing','Festival Event','Pooja / Religious Event','Other',
+];
+
+const DFLT_COMPANY = {
+  name:'Shree Swami Samarth', tagline:'Food & Hospitality Services',
+  address:'Vikhroli, Mumbai – 400083, Maharashtra',
+  phone:'+91 98765 43210', email:'info@shreeswamisamarthfoods.com',
+  gstin:'27XXXXX1234X1Z5',
+};
+
+// ─── Tiny helpers ─────────────────────────────────────────────────────────────
+function StatusBadge({ s }) {
+  const c = s==='paid'?'#16a34a':s==='partial'?'#ca8a04':'#dc2626';
+  return <span style={{ background:c+'22', color:c, padding:'3px 10px', borderRadius:12, fontSize:11, fontWeight:700, textTransform:'uppercase' }}>{s}</span>;
+}
+
+function FieldGroup({ label, children, style={} }) {
+  return <div className="form-group" style={style}><label className="form-label">{label}</label>{children}</div>;
+}
+
+// ─── Print / PDF ─────────────────────────────────────────────────────────────
+function printInvoice(invoice, settings) {
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (!w) return alert('Allow pop-ups to print.');
+  const { themeName, font, template, gstType, logo, company } = settings;
+  const theme = Object.values(require ? {} : {}); // handled via injected HTML
+  w.document.write(`
+    <!DOCTYPE html><html><head>
+    <meta charset="UTF-8"/>
+    <title>Invoice ${invoice.invoice_number}</title>
+    <link href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'${font}',sans-serif}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style>
+    </head><body id="root"></body></html>`);
+  w.document.close();
+  setTimeout(() => {
+    w.document.getElementById('root').innerHTML = document.getElementById('inv-preview-print')?.innerHTML || '';
+    w.print();
+  }, 600);
+}
+
+// ─── Invoice Preview Modal ────────────────────────────────────────────────────
+function PreviewModal({ invoice, onClose, company }) {
+  const { get } = useContent();
+  const [template, setTemplate] = useState('classic');
+  const [themeName, setThemeName] = useState('Gold & Maroon');
+  const [font,      setFont]      = useState('Inter');
+  const [gstType,   setGstType]   = useState('sgst_cgst');
+  const [logo,      setLogo]      = useState(get('company','logo_url',''));
+  const [tab,       setTab]       = useState('preview'); // preview | settings
+  const printRef = useRef(null);
+
+  const handlePrint = () => {
+    const style = document.createElement('style');
+    style.id = '__inv_print_css';
+    style.innerHTML = `
+      @media print {
+        body > * { display:none !important; }
+        #__inv_print_root { display:block !important; position:fixed; top:0;left:0;width:100%;z-index:99999; }
+      }`;
+    document.head.appendChild(style);
+    const div = document.createElement('div');
+    div.id = '__inv_print_root';
+    div.innerHTML = printRef.current?.innerHTML || '';
+    document.body.appendChild(div);
+    window.print();
+    setTimeout(() => { document.getElementById('__inv_print_css')?.remove(); document.getElementById('__inv_print_root')?.remove(); }, 1000);
+  };
+
+  const toolbarBtn = (active, onClick, children) => (
+    <button onClick={onClick} style={{ padding:'6px 12px', borderRadius:6, border:'1px solid var(--border)', background:active?'var(--dark)':'#fff', color:active?'#fff':'inherit', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:4 }}>{children}</button>
+  );
 
   return (
-    <div className="modal-overlay">
-      <div className="modal" style={{ maxWidth: 780, maxHeight: '95vh' }}>
-        <div className="modal-header" style={{ justifyContent: 'space-between' }}>
-          <h2>Invoice Preview</h2>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-primary btn-sm" onClick={handlePrint}><Printer size={14} /> Print / Download</button>
-            <button className="close-btn" onClick={onClose}><X size={20} /></button>
-          </div>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000, display:'flex', flexDirection:'column' }}>
+      {/* Top bar */}
+      <div style={{ background:'var(--dark)', padding:'10px 16px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+        <span style={{ color:'var(--gold)', fontWeight:700, marginRight:8, fontSize:14 }}>Invoice Preview</span>
+
+        {/* Template selector */}
+        <div style={{ display:'flex', gap:4 }}>
+          {TEMPLATES.map(tp => (
+            <button key={tp.id} onClick={() => setTemplate(tp.id)} title={tp.desc}
+              style={{ padding:'5px 10px', borderRadius:6, border:'1px solid', borderColor:template===tp.id?'var(--gold)':'rgba(255,255,255,0.2)', background:template===tp.id?'var(--gold)':'transparent', color:template===tp.id?'var(--dark)':'#fff', cursor:'pointer', fontSize:11 }}>
+              {tp.icon} {tp.name}
+            </button>
+          ))}
         </div>
-        <div className="modal-body" id="printable-invoice" style={{ fontFamily: 'DM Sans, sans-serif' }}>
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, paddingBottom: 20, borderBottom: '2px solid var(--gold)' }}>
-            <div>
-              <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, color: 'var(--maroon)', marginBottom: 4 }}>Shree Swami Samarth</h1>
-              <p style={{ fontSize: 11, color: 'var(--gold-dark)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 10 }}>Food & Hospitality Services</p>
-              <p style={{ fontSize: 13, color: 'var(--text-light)', lineHeight: 1.6 }}>
-                Vikhroli, Mumbai – 400083, Maharashtra<br />
-                Phone: +91 98765 43210<br />
-                Email: info@shreeswamisamarthfoods.com<br />
-                GSTIN: 27XXXXX1234X1Z5
-              </p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ background: 'var(--cream-dark)', borderRadius: 10, padding: '12px 20px', marginBottom: 10 }}>
-                <p style={{ fontSize: 12, color: 'var(--text-light)', textTransform: 'uppercase' }}>Invoice No.</p>
-                <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, color: 'var(--maroon)' }}>{invoice.invoice_number}</p>
-              </div>
-              <p style={{ fontSize: 13, color: 'var(--text-light)' }}>Date: {fmtDate(invoice.invoice_date)}</p>
-              {invoice.due_date && <p style={{ fontSize: 13, color: 'var(--text-light)' }}>Due: {fmtDate(invoice.due_date)}</p>}
-              <span className={`badge badge-${invoice.payment_status}`} style={{ marginTop: 8, display: 'inline-flex' }}>
-                {cap(invoice.payment_status)}
-              </span>
-            </div>
-          </div>
 
-          {/* Bill To */}
-          <div style={{ marginBottom: 24 }}>
-            <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--text-light)', marginBottom: 8 }}>Bill To</p>
-            <p style={{ fontWeight: 700, fontSize: 16 }}>{invoice.customer_name}</p>
-            {invoice.company_name && <p style={{ fontSize: 14, color: 'var(--text-light)' }}>{invoice.company_name}</p>}
-            <p style={{ fontSize: 14, color: 'var(--text-light)' }}>{invoice.email}</p>
-            {invoice.phone && <p style={{ fontSize: 14, color: 'var(--text-light)' }}>{invoice.phone}</p>}
-          </div>
+        {/* Color theme */}
+        <select value={themeName} onChange={e=>setThemeName(e.target.value)}
+          style={{ padding:'5px 8px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, cursor:'pointer' }}>
+          {Object.keys(THEMES).map(k => <option key={k} value={k} style={{ color:'#000' }}>{k}</option>)}
+        </select>
 
-          {/* Event Info */}
-          <div style={{ background: 'var(--cream)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <div><p style={{ fontSize: 11, color: 'var(--text-light)', textTransform: 'uppercase' }}>Event</p><p style={{ fontSize: 14 }}>{invoice.event_type}</p></div>
-            <div><p style={{ fontSize: 11, color: 'var(--text-light)', textTransform: 'uppercase' }}>Event Date</p><p style={{ fontSize: 14 }}>{fmtDate(invoice.event_date)}</p></div>
-            <div><p style={{ fontSize: 11, color: 'var(--text-light)', textTransform: 'uppercase' }}>Venue</p><p style={{ fontSize: 14 }}>{invoice.venue || '—'}</p></div>
-          </div>
+        {/* Font */}
+        <select value={font} onChange={e=>setFont(e.target.value)}
+          style={{ padding:'5px 8px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, cursor:'pointer', maxWidth:140 }}>
+          {FONTS.map(f => <option key={f} value={f} style={{ color:'#000',fontFamily:f }}>{f}</option>)}
+        </select>
 
-          {/* Line Items */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
-            <thead>
-              <tr style={{ background: 'var(--dark)' }}>
-                <th style={{ color: 'var(--gold)', padding: '10px 12px', fontSize: 12, textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Description</th>
-                <th style={{ color: 'var(--gold)', padding: '10px 12px', fontSize: 12, textAlign: 'center' }}>Qty</th>
-                <th style={{ color: 'var(--gold)', padding: '10px 12px', fontSize: 12, textAlign: 'right' }}>Rate</th>
-                <th style={{ color: 'var(--gold)', padding: '10px 12px', fontSize: 12, textAlign: 'right' }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(invoice.items || []).map((item, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px', fontSize: 14 }}>{item.description}</td>
-                  <td style={{ padding: '12px', fontSize: 14, textAlign: 'center' }}>{item.qty}</td>
-                  <td style={{ padding: '12px', fontSize: 14, textAlign: 'right' }}>{fmt(item.rate)}</td>
-                  <td style={{ padding: '12px', fontSize: 14, textAlign: 'right', fontWeight: 600 }}>{fmt(item.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* GST type */}
+        <select value={gstType} onChange={e=>setGstType(e.target.value)}
+          style={{ padding:'5px 8px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, cursor:'pointer' }}>
+          {GST_TYPES.map(g => <option key={g.value} value={g.value} style={{ color:'#000' }}>{g.label}</option>)}
+        </select>
 
-          {/* Totals */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <div style={{ width: 280 }}>
-              {[
-                ['Subtotal', fmt(invoice.subtotal)],
-                ['Discount', invoice.discount > 0 ? `- ${fmt(invoice.discount)}` : '—'],
-                [`Tax (${invoice.tax_rate || 5}%)`, fmt(invoice.tax_amount)],
-              ].map(([l, v]) => (
-                <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 14, borderBottom: '1px solid var(--cream-dark)' }}>
-                  <span style={{ color: 'var(--text-light)' }}>{l}</span><span>{v}</span>
-                </div>
-              ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', fontSize: 16, fontWeight: 700, borderBottom: '2px solid var(--gold)' }}>
-                <span>Grand Total</span><span style={{ color: 'var(--maroon)' }}>{fmt(invoice.grand_total)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 14 }}>
-                <span style={{ color: 'var(--text-light)' }}>Advance Paid</span><span style={{ color: 'var(--success)' }}>{fmt(invoice.advance_paid)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 15, fontWeight: 700 }}>
-                <span>Balance Due</span><span style={{ color: invoice.balance_due > 0 ? 'var(--error)' : 'var(--success)' }}>{fmt(invoice.balance_due)}</span>
-              </div>
-            </div>
-          </div>
+        {/* Logo URL */}
+        <input value={logo} onChange={e=>setLogo(e.target.value)} placeholder="Logo URL (optional)"
+          style={{ padding:'5px 10px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, width:200 }} />
 
-          {/* Notes */}
-          {invoice.notes && (
-            <div style={{ marginTop: 20, padding: '12px 16px', background: 'var(--cream)', borderRadius: 8, borderLeft: '3px solid var(--gold)' }}>
-              <p style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 4, textTransform: 'uppercase' }}>Terms & Notes</p>
-              <p style={{ fontSize: 13 }}>{invoice.notes}</p>
-            </div>
-          )}
-
-          {/* Footer */}
-          <div style={{ marginTop: 28, paddingTop: 16, borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: 12, color: 'var(--text-light)' }}>
-            Thank you for choosing Shree Swami Samarth Food & Hospitality Services. We look forward to serving you again!
-          </div>
+        <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+          <button onClick={handlePrint} style={{ padding:'6px 14px', borderRadius:6, background:'var(--gold)', color:'var(--dark)', border:'none', cursor:'pointer', fontWeight:700, fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
+            <Printer size={13} /> Print / PDF
+          </button>
+          <button onClick={onClose} style={{ padding:'6px 10px', borderRadius:6, background:'rgba(255,255,255,0.1)', color:'#fff', border:'none', cursor:'pointer' }}><X size={16}/></button>
         </div>
       </div>
-      <style>{`@media print { .modal-overlay { position: static; background: none; } .modal { box-shadow: none; max-height: none; } .modal-header { display: none; } }`}</style>
+
+      {/* Preview area */}
+      <div style={{ flex:1, overflow:'auto', background:'#e5e7eb', padding:24 }}>
+        <div ref={printRef} style={{ maxWidth:820, margin:'0 auto', background:'#fff', borderRadius:4, boxShadow:'0 4px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
+          <InvoicePreview invoice={invoice} template={template} themeName={themeName} font={font} logo={logo} gstType={gstType} company={company} />
+        </div>
+      </div>
     </div>
   );
 }
 
-export default function InvoicesPage() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
-  const [printInvoice, setPrintInvoice] = useState(null);
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ customer_name: '', company_name: '', email: '', phone: '', event_type: '', event_date: '', venue: '', items: [{ description: '', qty: 1, rate: 0, total: 0 }], discount: 0, tax_rate: 5, advance_paid: 0, notes: '', invoice_date: new Date().toISOString().split('T')[0] });
+// ─── Invoice Form (Create / Edit) ─────────────────────────────────────────────
+function InvoiceForm({ onSave, onClose, company }) {
+  const [form, setForm] = useState({
+    customer_name:'', company_name:'', email:'', phone:'',
+    event_type:'', event_date:'', venue:'',
+    items:[{ description:'', qty:1, rate:0, total:0 }],
+    discount:0, tax_rate:18, gst_type:'sgst_cgst', advance_paid:0,
+    notes:'', invoice_date: new Date().toISOString().split('T')[0], due_date:'',
+  });
   const [saving, setSaving] = useState(false);
+  const [tab, setTab]       = useState('form'); // form | preview
+  const [font,     setFont]      = useState('Inter');
+  const [template, setTemplate]  = useState('classic');
+  const [themeName,setThemeName] = useState('Gold & Maroon');
+  const [logo,     setLogo]      = useState('');
+  const [etSearch, setEtSearch]  = useState('');
+  const [etOpen,   setEtOpen]    = useState(false);
 
-  const load = () => {
-    setLoading(true);
-    api.get('/invoices/', { params: filter ? { status: filter } : {} })
-      .then(r => { setItems(r.data); setLoading(false); })
-      .catch(() => setLoading(false));
+  const set = (k,v) => setForm(f => ({...f,[k]:v}));
+  const setItem = (i,k,v) => {
+    const ni = [...form.items]; ni[i][k]=v;
+    if (k==='qty'||k==='rate') ni[i].total=(parseFloat(ni[i].qty)||0)*(parseFloat(ni[i].rate)||0);
+    setForm(f=>({...f,items:ni}));
+  };
+  const addItem    = () => setForm(f=>({...f,items:[...f.items,{description:'',qty:1,rate:0,total:0}]}));
+  const removeItem = i  => setForm(f=>({...f,items:f.items.filter((_,idx)=>idx!==i)}));
+
+  const subtotal = form.items.reduce((s,i)=>s+(parseFloat(i.total)||0),0);
+  const taxable  = Math.max(subtotal-(parseFloat(form.discount)||0),0);
+  const tax      = form.gst_type==='none' ? 0 : Math.round(taxable*(parseFloat(form.tax_rate)||0)/100*100)/100;
+  const grand    = Math.round((taxable+tax)*100)/100;
+  const balance  = Math.round((grand-(parseFloat(form.advance_paid)||0))*100)/100;
+
+  const previewInvoice = {
+    ...form, subtotal, tax_amount:tax, grand_total:grand, balance_due:balance,
+    invoice_number:'SSS-INV-PREVIEW', payment_status: balance<=0?'paid':form.advance_paid>0?'partial':'unpaid',
   };
 
-  useEffect(() => { load(); }, [filter]);
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const setItem = (i, k, v) => {
-    const newItems = [...form.items];
-    newItems[i][k] = v;
-    if (k === 'qty' || k === 'rate') newItems[i].total = (parseFloat(newItems[i].qty) || 0) * (parseFloat(newItems[i].rate) || 0);
-    setForm(f => ({ ...f, items: newItems }));
-  };
-  const addItem = () => setForm(f => ({ ...f, items: [...f.items, { description: '', qty: 1, rate: 0, total: 0 }] }));
-  const removeItem = (i) => setForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }));
+  const filteredET = EVENT_TYPES.filter(e=>e.toLowerCase().includes(etSearch.toLowerCase()));
 
   const handleSave = async () => {
+    if (!form.customer_name) return alert('Client name is required');
     setSaving(true);
     try {
       await api.post('/invoices/', form);
-      load(); setModal(false);
-    } catch (e) { alert('Error: ' + e.message); } finally { setSaving(false); }
+      onSave();
+    } catch(e) { alert('Error: '+e.message); } finally { setSaving(false); }
   };
+
+  const iw = window.innerWidth;
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:900, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      {/* Header */}
+      <div style={{ background:'var(--dark)', padding:'12px 20px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+        <span style={{ color:'var(--gold)', fontWeight:700, fontSize:16 }}>Create Invoice</span>
+        <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+          {/* Mobile tabs */}
+          <div style={{ display:'flex', gap:4 }}>
+            {['form','preview'].map(t=>(
+              <button key={t} onClick={()=>setTab(t)}
+                style={{ padding:'5px 12px', borderRadius:6, background:tab===t?'var(--gold)':'rgba(255,255,255,0.1)', color:tab===t?'var(--dark)':'#fff', border:'none', cursor:'pointer', fontSize:12, fontWeight:tab===t?700:400 }}>
+                {t==='form'?'📝 Form':'👁 Preview'}
+              </button>
+            ))}
+          </div>
+          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', color:'#fff', border:'none', borderRadius:6, padding:'5px 10px', cursor:'pointer' }}><X size={16}/></button>
+        </div>
+      </div>
+
+      {/* Body — split on desktop */}
+      <div style={{ flex:1, overflow:'hidden', display:'flex' }}>
+
+        {/* ── LEFT: Form ── */}
+        <div style={{ flex:1, overflow:'auto', padding:20, background:'var(--cream)', display: tab==='preview'&&iw<900?'none':'block', minWidth:0 }}>
+
+          {/* Client */}
+          <div className="card" style={{ marginBottom:16, padding:16 }}>
+            <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Client Details</p>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <FieldGroup label="Client Name *"><input className="form-input" value={form.customer_name} onChange={e=>set('customer_name',e.target.value)} /></FieldGroup>
+              <FieldGroup label="Company"><input className="form-input" value={form.company_name} onChange={e=>set('company_name',e.target.value)} /></FieldGroup>
+              <FieldGroup label="Email"><input className="form-input" type="email" value={form.email} onChange={e=>set('email',e.target.value)} /></FieldGroup>
+              <FieldGroup label="Phone"><input className="form-input" value={form.phone} onChange={e=>set('phone',e.target.value)} /></FieldGroup>
+            </div>
+          </div>
+
+          {/* Event */}
+          <div className="card" style={{ marginBottom:16, padding:16 }}>
+            <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Event Details</p>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              {/* Event type with suggestions */}
+              <FieldGroup label="Event Type">
+                <div style={{ position:'relative' }}>
+                  <input className="form-input" value={form.event_type} placeholder="Type or select..."
+                    onChange={e=>{ set('event_type',e.target.value); setEtSearch(e.target.value); setEtOpen(true); }}
+                    onFocus={()=>setEtOpen(true)} onBlur={()=>setTimeout(()=>setEtOpen(false),200)} />
+                  {etOpen && filteredET.length>0 && (
+                    <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'#fff', border:'1px solid var(--border)', borderRadius:6, zIndex:100, maxHeight:180, overflow:'auto', boxShadow:'0 4px 12px rgba(0,0,0,0.1)' }}>
+                      {filteredET.map(et=>(
+                        <div key={et} onMouseDown={()=>{ set('event_type',et); setEtSearch(et); setEtOpen(false); }}
+                          style={{ padding:'8px 12px', cursor:'pointer', fontSize:13, borderBottom:'1px solid var(--cream)' }}
+                          onMouseEnter={e=>e.target.style.background='var(--cream)'}
+                          onMouseLeave={e=>e.target.style.background='#fff'}>{et}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </FieldGroup>
+              <FieldGroup label="Event Date"><input className="form-input" type="date" value={form.event_date} onChange={e=>set('event_date',e.target.value)} /></FieldGroup>
+              <FieldGroup label="Venue"><input className="form-input" value={form.venue} onChange={e=>set('venue',e.target.value)} /></FieldGroup>
+              <FieldGroup label="Invoice Date"><input className="form-input" type="date" value={form.invoice_date} onChange={e=>set('invoice_date',e.target.value)} /></FieldGroup>
+              <FieldGroup label="Due Date"><input className="form-input" type="date" value={form.due_date} onChange={e=>set('due_date',e.target.value)} /></FieldGroup>
+            </div>
+          </div>
+
+          {/* Line Items */}
+          <div className="card" style={{ marginBottom:16, padding:16 }}>
+            <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Line Items</p>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 72px 96px 88px 28px', gap:6, marginBottom:6 }}>
+              {['Description','Qty','Rate (₹)','Total',''].map(h=><div key={h} style={{ fontSize:11, color:'var(--text-light)', textTransform:'uppercase' }}>{h}</div>)}
+            </div>
+            {form.items.map((item,i)=>(
+              <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 72px 96px 88px 28px', gap:6, marginBottom:6, alignItems:'center' }}>
+                <input className="form-input" placeholder="Description" value={item.description} onChange={e=>setItem(i,'description',e.target.value)} style={{ padding:'7px 10px', fontSize:13 }} />
+                <input className="form-input" type="number" value={item.qty} onChange={e=>setItem(i,'qty',e.target.value)} style={{ padding:'7px 8px', fontSize:13 }} />
+                <input className="form-input" type="number" value={item.rate} onChange={e=>setItem(i,'rate',e.target.value)} style={{ padding:'7px 8px', fontSize:13 }} />
+                <div style={{ padding:'7px 8px', background:'var(--cream)', borderRadius:6, fontSize:13, fontWeight:600, border:'1px solid var(--border)', textAlign:'right' }}>{fmt(item.total)}</div>
+                <button onClick={()=>removeItem(i)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--error)', padding:2 }}><X size={14}/></button>
+              </div>
+            ))}
+            <button className="btn btn-ghost btn-sm" onClick={addItem} style={{ marginTop:4 }}><Plus size={13}/> Add Item</button>
+          </div>
+
+          {/* GST & Totals */}
+          <div className="card" style={{ marginBottom:16, padding:16 }}>
+            <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Tax & Totals</p>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:12 }}>
+              <FieldGroup label="GST Type">
+                <select className="form-select" value={form.gst_type} onChange={e=>set('gst_type',e.target.value)}>
+                  {GST_TYPES.map(g=><option key={g.value} value={g.value}>{g.label}</option>)}
+                </select>
+              </FieldGroup>
+              {form.gst_type!=='none' && (
+                <FieldGroup label={form.gst_type==='sgst_cgst'?'Total GST %':form.gst_type==='vat'?'VAT %':'Tax %'}>
+                  <input className="form-input" type="number" value={form.tax_rate} onChange={e=>set('tax_rate',parseFloat(e.target.value)||0)} />
+                </FieldGroup>
+              )}
+              <FieldGroup label="Discount (₹)">
+                <input className="form-input" type="number" value={form.discount} onChange={e=>set('discount',parseFloat(e.target.value)||0)} />
+              </FieldGroup>
+            </div>
+            <FieldGroup label="Advance Paid (₹)" style={{ maxWidth:200 }}>
+              <input className="form-input" type="number" value={form.advance_paid} onChange={e=>set('advance_paid',parseFloat(e.target.value)||0)} />
+            </FieldGroup>
+            {/* Summary */}
+            <div style={{ background:'var(--cream-dark)', borderRadius:8, padding:12, marginTop:12, fontSize:13 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+              {gstLines(tax, form.tax_rate, form.gst_type).map(g=>(
+                <div key={g.label} style={{ display:'flex', justifyContent:'space-between', marginBottom:4, color:'var(--text-light)' }}><span>{g.label}</span><span>{fmt(g.amount)}</span></div>
+              ))}
+              <div style={{ display:'flex', justifyContent:'space-between', fontWeight:700, fontSize:15, borderTop:'1px solid var(--border)', paddingTop:6, color:'var(--maroon)' }}><span>Grand Total</span><span>{fmt(grand)}</span></div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginTop:5 }}><span>Balance Due</span><span style={{ fontWeight:700, color:balance>0?'var(--error)':'var(--success)' }}>{fmt(balance)}</span></div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginBottom:16, padding:16 }}>
+            <FieldGroup label="Notes / Terms">
+              <textarea className="form-textarea" style={{ minHeight:60, fontSize:13 }} value={form.notes} onChange={e=>set('notes',e.target.value)} placeholder="Payment terms, special instructions..." />
+            </FieldGroup>
+          </div>
+
+          {/* Template settings (in form panel) */}
+          <div className="card" style={{ padding:16, marginBottom:16 }}>
+            <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Invoice Appearance</p>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <FieldGroup label="Template">
+                <select className="form-select" value={template} onChange={e=>setTemplate(e.target.value)}>
+                  {TEMPLATES.map(tp=><option key={tp.id} value={tp.id}>{tp.icon} {tp.name}</option>)}
+                </select>
+              </FieldGroup>
+              <FieldGroup label="Color Theme">
+                <select className="form-select" value={themeName} onChange={e=>setThemeName(e.target.value)}>
+                  {Object.keys(THEMES).map(k=><option key={k} value={k}>{k}</option>)}
+                </select>
+              </FieldGroup>
+              <FieldGroup label="Font">
+                <select className="form-select" value={font} onChange={e=>setFont(e.target.value)}>
+                  {FONTS.map(f=><option key={f} value={f} style={{ fontFamily:f }}>{f}</option>)}
+                </select>
+              </FieldGroup>
+              <FieldGroup label="Logo URL (optional)">
+                <input className="form-input" value={logo} onChange={e=>setLogo(e.target.value)} placeholder="https://..." />
+              </FieldGroup>
+            </div>
+          </div>
+
+          <div style={{ display:'flex', gap:10, paddingBottom:24 }}>
+            <button className="btn btn-ghost" onClick={onClose} style={{ flex:1 }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ flex:2, justifyContent:'center' }}>
+              {saving?'Creating...':'✓ Create Invoice'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── RIGHT: Live Preview ── */}
+        <div style={{ width:460, flexShrink:0, overflow:'auto', background:'#e5e7eb', padding:16, borderLeft:'1px solid var(--border)', display: tab==='form'&&iw<900?'none':'block' }}>
+          <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'1px', color:'#888', marginBottom:12, textAlign:'center' }}>Live Preview</p>
+          <div style={{ background:'#fff', borderRadius:4, overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.1)', transformOrigin:'top center', transform:'scale(0.85)' }}>
+            <InvoicePreview invoice={previewInvoice} template={template} themeName={themeName} font={font} logo={logo} gstType={form.gst_type} company={DFLT_COMPANY} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function InvoicesPage() {
+  const [items,   setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter,  setFilter]  = useState('');
+  const [search,  setSearch]  = useState('');
+  const [preview, setPreview] = useState(null);
+  const [creating,setCreating]= useState(false);
+  const { get } = useContent();
+
+  const company = {
+    name:    get('company','name',    DFLT_COMPANY.name),
+    tagline: get('company','tagline', DFLT_COMPANY.tagline),
+    address: get('contact','address', DFLT_COMPANY.address),
+    phone:   get('contact','phone',   DFLT_COMPANY.phone),
+    email:   get('contact','email',   DFLT_COMPANY.email),
+    gstin:   get('company','gstin',   DFLT_COMPANY.gstin),
+  };
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.get('/invoices/', { params: filter ? { payment_status: filter } : {} })
+      .then(r => { setItems(r.data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
 
   const handlePayment = async (inv) => {
     const amount = prompt(`Record payment for ${inv.invoice_number}\nBalance due: ${fmt(inv.balance_due)}\nEnter amount:`);
-    if (!amount) return;
-    const mode = prompt('Payment mode (Cash/NEFT/RTGS/Cheque/UPI):') || 'Cash';
+    if (!amount || isNaN(amount)) return;
+    const mode = prompt('Payment mode:\nCash / NEFT / RTGS / Cheque / UPI') || 'Cash';
     await api.post(`/invoices/${inv.id}/payment`, { amount: parseFloat(amount), mode });
     load();
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete invoice?')) return;
+    if (!confirm('Delete this invoice?')) return;
     await api.delete(`/invoices/${id}`);
     load();
   };
 
-  const subtotal = form.items.reduce((s, i) => s + (i.total || 0), 0);
-  const tax = ((subtotal - (form.discount || 0)) * (form.tax_rate || 5)) / 100;
-  const grand = subtotal - (form.discount || 0) + tax;
+  const filtered = items.filter(inv =>
+    !search ||
+    inv.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+    inv.invoice_number?.toLowerCase().includes(search.toLowerCase()) ||
+    inv.company_name?.toLowerCase().includes(search.toLowerCase()) ||
+    inv.event_type?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totals = { grand: items.reduce((s,i)=>s+parseFloat(i.grand_total||0),0), paid: items.reduce((s,i)=>s+parseFloat(i.advance_paid||0),0), due: items.reduce((s,i)=>s+parseFloat(i.balance_due||0),0) };
 
   return (
     <div>
-      {printInvoice && <InvoicePrintView invoice={printInvoice} onClose={() => setPrintInvoice(null)} />}
+      {preview   && <PreviewModal invoice={preview} onClose={()=>setPreview(null)} company={company} />}
+      {creating  && <InvoiceForm  onSave={()=>{ load(); setCreating(false); }} onClose={()=>setCreating(false)} company={company} />}
 
-      <div className="page-header">
+      <div className="page-header" style={{ flexWrap:'wrap', gap:10 }}>
         <h1 className="page-title">Invoices & Billing</h1>
-        <button className="btn btn-primary btn-sm" onClick={() => setModal(true)}><Plus size={16} /> New Invoice</button>
+        <button className="btn btn-primary btn-sm" onClick={()=>setCreating(true)}><Plus size={15}/> New Invoice</button>
       </div>
 
-      {/* Filter */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        {[['', 'All'], ['paid', 'Paid'], ['partial', 'Partial'], ['unpaid', 'Unpaid']].map(([v, l]) => (
-          <button key={v} onClick={() => setFilter(v)} className={`btn btn-sm ${filter === v ? 'btn-primary' : 'btn-ghost'}`}>{l}</button>
+      {/* Summary cards */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:12, marginBottom:20 }}>
+        {[
+          { l:'Total Billed', v:fmt(totals.grand), c:'var(--maroon)' },
+          { l:'Collected',    v:fmt(totals.paid),  c:'var(--success)' },
+          { l:'Outstanding',  v:fmt(totals.due),   c:'var(--error)' },
+          { l:'Total Invoices',v:items.length,     c:'var(--gold-dark)' },
+        ].map(s=>(
+          <div key={s.l} className="card" style={{ padding:'14px 16px', textAlign:'center' }}>
+            <div style={{ fontSize:11, color:'var(--text-light)', textTransform:'uppercase', marginBottom:4 }}>{s.l}</div>
+            <div style={{ fontSize:20, fontWeight:700, color:s.c }}>{s.v}</div>
+          </div>
         ))}
       </div>
 
+      {/* Filters + Search */}
+      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
+        {[['','All'],['paid','Paid'],['partial','Partial'],['unpaid','Unpaid']].map(([v,l])=>(
+          <button key={v} onClick={()=>setFilter(v)} className={`btn btn-sm ${filter===v?'btn-primary':'btn-ghost'}`}>{l}</button>
+        ))}
+        <div style={{ marginLeft:'auto', position:'relative' }}>
+          <Search size={14} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)' }} />
+          <input className="form-input" placeholder="Search invoices..." value={search} onChange={e=>setSearch(e.target.value)}
+            style={{ paddingLeft:32, width:220, fontSize:13 }} />
+        </div>
+      </div>
+
       <div className="card">
-        {loading ? <div className="loading">Loading...</div> : items.length === 0 ? (
-          <div className="empty"><div className="empty-icon">🧾</div>No invoices found</div>
+        {loading ? <div className="loading">Loading...</div> : filtered.length===0 ? (
+          <div className="empty"><div className="empty-icon">🧾</div>{search?'No matching invoices':'No invoices yet'}</div>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Invoice No.</th><th>Client</th><th>Event</th><th>Date</th><th>Grand Total</th><th>Advance</th><th>Balance</th><th>Status</th><th>Actions</th></tr>
+                <tr>
+                  <th>Invoice No.</th><th>Client</th><th>Event Type</th>
+                  <th>Date</th><th>Grand Total</th><th>Paid</th>
+                  <th>Balance</th><th>Status</th><th>Actions</th>
+                </tr>
               </thead>
               <tbody>
-                {items.map(inv => (
+                {filtered.map(inv=>(
                   <tr key={inv.id}>
-                    <td style={{ fontWeight: 700, color: 'var(--maroon)' }}>{inv.invoice_number}</td>
+                    <td style={{ fontWeight:700, color:'var(--maroon)', whiteSpace:'nowrap' }}>{inv.invoice_number}</td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{inv.customer_name}</div>
-                      {inv.company_name && <div style={{ fontSize: 12, color: 'var(--text-light)' }}>{inv.company_name}</div>}
+                      <div style={{ fontWeight:600, fontSize:13 }}>{inv.customer_name}</div>
+                      {inv.company_name && <div style={{ fontSize:11, color:'var(--text-light)' }}>{inv.company_name}</div>}
                     </td>
-                    <td style={{ fontSize: 13 }}>{inv.event_type}</td>
-                    <td style={{ fontSize: 13 }}>{fmtDate(inv.invoice_date)}</td>
-                    <td style={{ fontWeight: 600 }}>{fmt(inv.grand_total)}</td>
-                    <td style={{ color: 'var(--success)' }}>{fmt(inv.advance_paid)}</td>
-                    <td style={{ color: inv.balance_due > 0 ? 'var(--error)' : 'var(--success)', fontWeight: 600 }}>{fmt(inv.balance_due)}</td>
-                    <td><span className={`badge badge-${inv.payment_status}`}>{cap(inv.payment_status)}</span></td>
+                    <td style={{ fontSize:13 }}>{inv.event_type || '—'}</td>
+                    <td style={{ fontSize:12, whiteSpace:'nowrap' }}>{fmtDate(inv.invoice_date)}</td>
+                    <td style={{ fontWeight:700 }}>{fmt(inv.grand_total)}</td>
+                    <td style={{ color:'var(--success)', fontSize:13 }}>{fmt(inv.advance_paid)}</td>
+                    <td style={{ fontWeight:700, color: parseFloat(inv.balance_due)>0?'var(--error)':'var(--success)' }}>{fmt(inv.balance_due)}</td>
+                    <td><StatusBadge s={inv.payment_status} /></td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setPrintInvoice(inv)} title="View/Print"><Eye size={13} /></button>
-                        {inv.balance_due > 0 && <button className="btn btn-ghost btn-sm" onClick={() => handlePayment(inv)} title="Record Payment">₹+</button>}
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(inv.id)} title="Delete"><Trash2 size={13} /></button>
+                      <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>setPreview(inv)} title="View & Print"><Eye size={13}/></button>
+                        {parseFloat(inv.balance_due)>0 && (
+                          <button className="btn btn-ghost btn-sm" onClick={()=>handlePayment(inv)} title="Record Payment" style={{ color:'var(--success)', fontWeight:700 }}>₹+</button>
+                        )}
+                        <button className="btn btn-danger btn-sm" onClick={()=>handleDelete(inv.id)} title="Delete"><Trash2 size={13}/></button>
                       </div>
                     </td>
                   </tr>
@@ -229,68 +485,6 @@ export default function InvoicesPage() {
           </div>
         )}
       </div>
-
-      {/* Create Invoice Modal */}
-      {modal && (
-        <div className="modal-overlay" onClick={() => setModal(false)}>
-          <div className="modal" style={{ maxWidth: 760 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Create Invoice</h2>
-              <button className="close-btn" onClick={() => setModal(false)}><X size={20} /></button>
-            </div>
-            <div className="modal-body">
-              <div className="form-grid" style={{ marginBottom: 16 }}>
-                <div className="form-group"><label className="form-label">Client Name *</label><input className="form-input" value={form.customer_name} onChange={e => set('customer_name', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Company</label><input className="form-input" value={form.company_name} onChange={e => set('company_name', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" value={form.email} onChange={e => set('email', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Phone</label><input className="form-input" value={form.phone} onChange={e => set('phone', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Event Type</label><input className="form-input" value={form.event_type} onChange={e => set('event_type', e.target.value)} placeholder="e.g. Wedding, Conference" /></div>
-                <div className="form-group"><label className="form-label">Event Date</label><input className="form-input" type="date" value={form.event_date} onChange={e => set('event_date', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Venue</label><input className="form-input" value={form.venue} onChange={e => set('venue', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Invoice Date</label><input className="form-input" type="date" value={form.invoice_date} onChange={e => set('invoice_date', e.target.value)} /></div>
-              </div>
-
-              {/* Line Items */}
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>Line Items</p>
-                {form.items.map((item, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px 100px 32px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                    <input className="form-input" placeholder="Description" value={item.description} onChange={e => setItem(i, 'description', e.target.value)} style={{ padding: '8px 12px' }} />
-                    <input className="form-input" type="number" placeholder="Qty" value={item.qty} onChange={e => setItem(i, 'qty', e.target.value)} style={{ padding: '8px 12px' }} />
-                    <input className="form-input" type="number" placeholder="Rate" value={item.rate} onChange={e => setItem(i, 'rate', e.target.value)} style={{ padding: '8px 12px' }} />
-                    <div style={{ padding: '8px 12px', background: 'var(--cream)', borderRadius: 8, fontSize: 14, fontWeight: 600, border: '1px solid var(--border)' }}>{fmt(item.total)}</div>
-                    <button onClick={() => removeItem(i)} className="close-btn" style={{ width: 28, height: 28 }}><X size={14} /></button>
-                  </div>
-                ))}
-                <button className="btn btn-ghost btn-sm" onClick={addItem}><Plus size={14} /> Add Item</button>
-              </div>
-
-              {/* Totals */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <div style={{ width: 280 }}>
-                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 8 }}>
-                    <div className="form-group"><label className="form-label">Discount (₹)</label><input className="form-input" type="number" value={form.discount} onChange={e => set('discount', parseFloat(e.target.value) || 0)} /></div>
-                    <div className="form-group"><label className="form-label">Tax %</label><input className="form-input" type="number" value={form.tax_rate} onChange={e => set('tax_rate', parseFloat(e.target.value) || 0)} /></div>
-                  </div>
-                  <div className="form-group"><label className="form-label">Advance Paid (₹)</label><input className="form-input" type="number" value={form.advance_paid} onChange={e => set('advance_paid', parseFloat(e.target.value) || 0)} /></div>
-                  <div style={{ padding: '12px', background: 'var(--cream-dark)', borderRadius: 8, fontSize: 13 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>Tax</span><span>{fmt(tax)}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15, borderTop: '1px solid var(--border)', paddingTop: 6 }}><span>Grand Total</span><span style={{ color: 'var(--maroon)' }}>{fmt(grand)}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}><span>Balance Due</span><span style={{ fontWeight: 700, color: 'var(--error)' }}>{fmt(grand - (form.advance_paid || 0))}</span></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginTop: 12 }}><label className="form-label">Notes / Terms</label><textarea className="form-textarea" style={{ minHeight: 60 }} value={form.notes} onChange={e => set('notes', e.target.value)} /></div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Creating...' : 'Create Invoice'}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
