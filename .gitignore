@@ -18,6 +18,7 @@ instance/
 .env
 .env.local
 .env.*.local
+backend/.env.production
 
 # Node / Frontend
 frontend-app/node_modules/

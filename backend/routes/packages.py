@@ -1,47 +1,95 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from models.store import db, next_id, now, find_by_id, find_index
+from models.db import get_db, row_to_dict, rows_to_list, json_val
 
 packages_bp = Blueprint("packages", __name__)
 
+
 @packages_bp.route("/", methods=["GET"])
+@jwt_required()
 def get_all():
     category = request.args.get("category")
-    items = db["packages"]
+    sql = "SELECT * FROM packages WHERE 1=1"
+    params = []
     if category:
-        items = [p for p in items if p["category"] == category]
-    return jsonify(items)
+        sql += " AND category = %s"; params.append(category)
+    sql += " ORDER BY id"
+    with get_db() as cur:
+        cur.execute(sql, params)
+        return jsonify(rows_to_list(cur.fetchall()))
+
 
 @packages_bp.route("/public", methods=["GET"])
 def get_public():
-    return jsonify([p for p in db["packages"] if p.get("active")])
+    category = request.args.get("category")
+    sql = "SELECT * FROM packages WHERE active = TRUE"
+    params = []
+    if category:
+        sql += " AND category = %s"; params.append(category)
+    sql += " ORDER BY featured DESC, id"
+    with get_db() as cur:
+        cur.execute(sql, params)
+        return jsonify(rows_to_list(cur.fetchall()))
+
 
 @packages_bp.route("/<int:id>", methods=["GET"])
+@jwt_required()
 def get_one(id):
-    item = find_by_id("packages", id)
-    if not item: return jsonify({"message": "Not found"}), 404
-    return jsonify(item)
+    with get_db() as cur:
+        cur.execute("SELECT * FROM packages WHERE id = %s", (id,))
+        row = row_to_dict(cur.fetchone())
+    if not row:
+        return jsonify({"message": "Not found"}), 404
+    return jsonify(row)
+
 
 @packages_bp.route("/", methods=["POST"])
 @jwt_required()
 def create():
-    data = request.get_json()
-    item = {**data, "id": next_id("inquiry"), "active": True, "created_at": now()}
-    db["packages"].append(item)
-    return jsonify(item), 201
+    d = request.get_json() or {}
+    with get_db() as cur:
+        cur.execute("""
+            INSERT INTO packages
+                (name, category, price_per_person, min_persons,
+                 description, inclusions, featured, active)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            RETURNING *
+        """, (
+            d.get("name"), d.get("category"),
+            d.get("price_per_person", 0), d.get("min_persons", 1),
+            d.get("description"),
+            json_val(d.get("inclusions", [])),
+            d.get("featured", False), d.get("active", True),
+        ))
+        row = row_to_dict(cur.fetchone())
+    return jsonify(row), 201
+
 
 @packages_bp.route("/<int:id>", methods=["PUT"])
 @jwt_required()
 def update(id):
-    idx = find_index("packages", id)
-    if idx == -1: return jsonify({"message": "Not found"}), 404
-    db["packages"][idx].update(request.get_json())
-    return jsonify(db["packages"][idx])
+    d = request.get_json() or {}
+    allowed = {"name","category","price_per_person","min_persons","description","featured","active"}
+    sets = {k: v for k, v in d.items() if k in allowed}
+    if "inclusions" in d:
+        sets["inclusions"] = json_val(d["inclusions"])
+    if not sets:
+        return jsonify({"message": "Nothing to update"}), 400
+    cols = ", ".join(f"{k} = %s" for k in sets)
+    with get_db() as cur:
+        cur.execute(f"UPDATE packages SET {cols} WHERE id = %s RETURNING *",
+                    (*sets.values(), id))
+        row = row_to_dict(cur.fetchone())
+    if not row:
+        return jsonify({"message": "Not found"}), 404
+    return jsonify(row)
+
 
 @packages_bp.route("/<int:id>", methods=["DELETE"])
 @jwt_required()
 def delete(id):
-    idx = find_index("packages", id)
-    if idx == -1: return jsonify({"message": "Not found"}), 404
-    db["packages"].pop(idx)
+    with get_db() as cur:
+        cur.execute("DELETE FROM packages WHERE id = %s RETURNING id", (id,))
+        if not cur.fetchone():
+            return jsonify({"message": "Not found"}), 404
     return jsonify({"message": "Deleted"})
