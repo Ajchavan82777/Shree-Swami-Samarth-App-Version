@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
-from models.db import get_db, rows_to_list
+from models.db import get_sb
+from collections import Counter
 
 reports_bp = Blueprint("reports", __name__)
 
@@ -8,77 +9,48 @@ reports_bp = Blueprint("reports", __name__)
 @reports_bp.route("/summary", methods=["GET"])
 @jwt_required()
 def summary():
-    with get_db() as cur:
-        cur.execute("""
-            SELECT
-                COALESCE(SUM(advance_paid), 0)  AS total_collected,
-                COALESCE(SUM(balance_due),  0)  AS pending,
-                COALESCE(SUM(grand_total),  0)  AS grand_total_sum
-            FROM invoices
-        """)
-        rev = cur.fetchone()
+    sb = get_sb()
 
-        cur.execute("""
-            SELECT payment_status, COUNT(*) AS cnt
-            FROM invoices GROUP BY payment_status
-        """)
-        inv_rows = cur.fetchall()
-        inv_counts = {r["payment_status"]: r["cnt"] for r in inv_rows}
+    inv_data = sb.table("invoices").select("payment_status, advance_paid, balance_due, grand_total").execute().data
+    total_collected = sum(float(r.get("advance_paid") or 0) for r in inv_data)
+    pending         = sum(float(r.get("balance_due")  or 0) for r in inv_data)
+    grand_total_sum = sum(float(r.get("grand_total")  or 0) for r in inv_data)
+    inv_counts      = dict(Counter(r.get("payment_status", "unpaid") for r in inv_data))
 
-        cur.execute("""
-            SELECT event_type, COUNT(*) AS cnt
-            FROM bookings GROUP BY event_type
-        """)
-        bookings_by_type = {r["event_type"]: r["cnt"] for r in cur.fetchall()}
+    booking_data    = sb.table("bookings").select("event_type, package_name").execute().data
+    bookings_by_type = dict(Counter(b.get("event_type", "other") for b in booking_data))
+    pkg_counts       = Counter(b["package_name"] for b in booking_data if b.get("package_name"))
+    top_packages     = [{"name": k, "count": v} for k, v in pkg_counts.most_common(10)]
 
-        cur.execute("""
-            SELECT status, COUNT(*) AS cnt
-            FROM inquiries GROUP BY status
-        """)
-        inquiry_by_status = {r["status"]: r["cnt"] for r in cur.fetchall()}
+    inq_data          = sb.table("inquiries").select("status").execute().data
+    inquiry_by_status = dict(Counter(i.get("status", "new") for i in inq_data))
 
-        cur.execute("""
-            SELECT package_name AS name, COUNT(*) AS count
-            FROM bookings WHERE package_name IS NOT NULL
-            GROUP BY package_name ORDER BY count DESC LIMIT 10
-        """)
-        top_packages = rows_to_list(cur.fetchall())
-
-        cur.execute("SELECT COUNT(*) AS n FROM customers")
-        total_customers = cur.fetchone()["n"]
-
-        cur.execute("SELECT COUNT(*) AS n FROM corporate_leads")
-        total_corporate_leads = cur.fetchone()["n"]
-
-        cur.execute("SELECT COUNT(*) AS n FROM staff")
-        total_staff = cur.fetchone()["n"]
+    total_customers       = sb.table("customers").select("id", count="exact").execute().count or 0
+    total_corporate_leads = sb.table("corporate_leads").select("id", count="exact").execute().count or 0
+    total_staff           = sb.table("staff").select("id", count="exact").execute().count or 0
 
     return jsonify({
         "revenue": {
-            "total_collected": float(rev["total_collected"]),
-            "pending":         float(rev["pending"]),
-            "grand_total":     float(rev["grand_total_sum"]),
+            "total_collected": total_collected,
+            "pending":         pending,
+            "grand_total":     grand_total_sum,
         },
         "invoices": {
             "paid":    inv_counts.get("paid",    0),
             "partial": inv_counts.get("partial", 0),
             "unpaid":  inv_counts.get("unpaid",  0),
-            "total":   sum(inv_counts.values()),
+            "total":   len(inv_data),
         },
-        "bookings_by_type":    bookings_by_type,
-        "inquiry_by_status":   inquiry_by_status,
-        "top_packages":        top_packages,
-        "total_customers":     total_customers,
+        "bookings_by_type":      bookings_by_type,
+        "inquiry_by_status":     inquiry_by_status,
+        "top_packages":          top_packages,
+        "total_customers":       total_customers,
         "total_corporate_leads": total_corporate_leads,
-        "total_staff":         total_staff,
+        "total_staff":           total_staff,
     })
 
 
 @reports_bp.route("/testimonials", methods=["GET"])
 def testimonials():
-    with get_db() as cur:
-        cur.execute("""
-            SELECT * FROM testimonials
-            WHERE approved = TRUE ORDER BY created_at DESC
-        """)
-        return jsonify(rows_to_list(cur.fetchall()))
+    result = get_sb().table("testimonials").select("*").eq("approved", True).order("created_at", desc=True).execute()
+    return jsonify(result.data)

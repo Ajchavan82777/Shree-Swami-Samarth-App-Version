@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from models.db import get_db, row_to_dict, rows_to_list
+from models.db import get_sb
 
 corporate_bp = Blueprint("corporate", __name__)
 
@@ -9,78 +9,60 @@ corporate_bp = Blueprint("corporate", __name__)
 @jwt_required()
 def get_all():
     status = request.args.get("status")
-    sql = "SELECT * FROM corporate_leads WHERE 1=1"
-    params = []
+    query  = get_sb().table("corporate_leads").select("*")
     if status:
-        sql += " AND status = %s"; params.append(status)
-    sql += " ORDER BY created_at DESC"
-    with get_db() as cur:
-        cur.execute(sql, params)
-        return jsonify(rows_to_list(cur.fetchall()))
+        query = query.eq("status", status)
+    result = query.order("created_at", desc=True).execute()
+    return jsonify(result.data)
 
 
 @corporate_bp.route("/<int:id>", methods=["GET"])
 @jwt_required()
 def get_one(id):
-    with get_db() as cur:
-        cur.execute("SELECT * FROM corporate_leads WHERE id = %s", (id,))
-        row = row_to_dict(cur.fetchone())
-    if not row:
+    result = get_sb().table("corporate_leads").select("*").eq("id", id).execute()
+    if not result.data:
         return jsonify({"message": "Not found"}), 404
-    return jsonify(row)
+    return jsonify(result.data[0])
 
 
 @corporate_bp.route("/", methods=["POST"])
 @jwt_required()
 def create():
-    d = request.get_json() or {}
-    with get_db() as cur:
-        cur.execute("""
-            INSERT INTO corporate_leads
-                (company_name, contact_name, email, phone, city, employees,
-                 service_type, monthly_value, status, contract_start,
-                 contract_end, billing_cycle, notes)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            RETURNING *
-        """, (
-            d.get("company_name"), d.get("contact_name"), d.get("email"),
-            d.get("phone"), d.get("city"), d.get("employees"),
-            d.get("service_type"), d.get("monthly_value"),
-            d.get("status", "prospect"),
-            d.get("contract_start"), d.get("contract_end"),
-            d.get("billing_cycle", "monthly"), d.get("notes"),
-        ))
-        row = row_to_dict(cur.fetchone())
-    return jsonify(row), 201
+    d   = request.get_json() or {}
+    row = {
+        "company_name": d.get("company_name"), "contact_name": d.get("contact_name"),
+        "email": d.get("email"), "phone": d.get("phone"), "city": d.get("city"),
+        "employees": d.get("employees"), "service_type": d.get("service_type"),
+        "monthly_value": d.get("monthly_value"), "status": d.get("status", "prospect"),
+        "contract_start": d.get("contract_start"), "contract_end": d.get("contract_end"),
+        "billing_cycle": d.get("billing_cycle", "monthly"), "notes": d.get("notes"),
+    }
+    result = get_sb().table("corporate_leads").insert(row).execute()
+    return jsonify(result.data[0]), 201
 
 
 @corporate_bp.route("/<int:id>", methods=["PUT"])
 @jwt_required()
 def update(id):
-    d = request.get_json() or {}
+    d       = request.get_json() or {}
     allowed = {
-        "company_name","contact_name","email","phone","city","employees",
-        "service_type","monthly_value","status","contract_start",
-        "contract_end","billing_cycle","notes",
+        "company_name", "contact_name", "email", "phone", "city", "employees",
+        "service_type", "monthly_value", "status", "contract_start",
+        "contract_end", "billing_cycle", "notes",
     }
     sets = {k: v for k, v in d.items() if k in allowed}
     if not sets:
         return jsonify({"message": "Nothing to update"}), 400
-    cols = ", ".join(f"{k} = %s" for k in sets)
-    with get_db() as cur:
-        cur.execute(f"UPDATE corporate_leads SET {cols} WHERE id = %s RETURNING *",
-                    (*sets.values(), id))
-        row = row_to_dict(cur.fetchone())
-    if not row:
+    result = get_sb().table("corporate_leads").update(sets).eq("id", id).execute()
+    if not result.data:
         return jsonify({"message": "Not found"}), 404
-    return jsonify(row)
+    return jsonify(result.data[0])
 
 
 @corporate_bp.route("/<int:id>", methods=["DELETE"])
 @jwt_required()
 def delete(id):
-    with get_db() as cur:
-        cur.execute("DELETE FROM corporate_leads WHERE id = %s RETURNING id", (id,))
-        if not cur.fetchone():
-            return jsonify({"message": "Not found"}), 404
+    result = get_sb().table("corporate_leads").delete().eq("id", id).execute()
+    if not result.data:
+        return jsonify({"message": "Not found"}), 404
     return jsonify({"message": "Deleted"})

@@ -10,47 +10,75 @@ echo   SHREE SWAMI SAMARTH - SUPABASE SETUP WIZARD
 echo =====================================================
 echo.
 echo  This wizard will:
-echo    1. Collect your Supabase connection details
-echo    2. Write backend\.env with DATABASE_URL
+echo    1. Collect your Supabase project credentials
+echo    2. Write backend\.env
 echo    3. Install Python dependencies
-echo    4. Run database migrations (schema creation)
-echo    5. Optionally load seed data
-echo    6. Test the connection
+echo    4. Test the Supabase connection
 echo.
-echo  Before starting, make sure you have:
-echo    - Created a Supabase project at https://supabase.com
-echo    - Copied the DATABASE_URL from:
-echo      Project Settings ^> Database ^> Connection string ^> URI (Session pooler, port 5432)
+echo  You will need (from Supabase Dashboard):
+echo    - Project URL     : Settings ^> API ^> Project URL
+echo    - Anon Key        : Settings ^> API ^> anon (public)
+echo    - Service Role Key: Settings ^> API ^> service_role (secret)
 echo.
 echo =====================================================
 echo.
 
-:: ── 1. Collect DATABASE_URL ──────────────────────────────────────────────────
+:: ?? 1. Supabase Project URL ???????????????????????????????????????????????????
 :ask_url
-set "DB_URL="
-echo  Enter your Supabase DATABASE_URL:
-echo  (looks like: postgresql://postgres.xxxxx:PASSWORD@aws-0-ap-south-1.pooler.supabase.com:5432/postgres)
+set "SUPABASE_URL="
+echo  Enter your Supabase Project URL:
+echo  (looks like: https://xxxxxxxxxxxxxx.supabase.co)
 echo.
-set /p DB_URL="  > "
+set /p SUPABASE_URL="  > "
 
-if "!DB_URL!"=="" (
-    echo  [ERROR] URL cannot be empty. Please try again.
+if "!SUPABASE_URL!"=="" (
+    echo  [ERROR] URL cannot be empty.
     echo.
     goto ask_url
 )
 
-echo !DB_URL! | findstr /i "postgresql://" >nul
+echo !SUPABASE_URL! | findstr /i "supabase.co" >nul
 if errorlevel 1 (
-    echo  [ERROR] URL must start with postgresql://
+    echo  [ERROR] URL must contain supabase.co
     echo.
     goto ask_url
 )
 
 echo.
-echo  [OK] URL accepted.
+echo  [OK] Project URL accepted.
 echo.
 
-:: ── 2. JWT and SECRET keys ───────────────────────────────────────────────────
+:: ?? 2. Anon Key ???????????????????????????????????????????????????????????????
+:ask_anon
+set "SUPABASE_ANON_KEY="
+echo  Enter your Supabase Anon Key (public):
+set /p SUPABASE_ANON_KEY="  > "
+
+if "!SUPABASE_ANON_KEY!"=="" (
+    echo  [ERROR] Anon key cannot be empty.
+    echo.
+    goto ask_anon
+)
+echo.
+echo  [OK] Anon key accepted.
+echo.
+
+:: ?? 3. Service Role Key ???????????????????????????????????????????????????????
+:ask_service
+set "SUPABASE_SERVICE_ROLE_KEY="
+echo  Enter your Supabase Service Role Key (secret):
+set /p SUPABASE_SERVICE_ROLE_KEY="  > "
+
+if "!SUPABASE_SERVICE_ROLE_KEY!"=="" (
+    echo  [ERROR] Service role key cannot be empty.
+    echo.
+    goto ask_service
+)
+echo.
+echo  [OK] Service role key accepted.
+echo.
+
+:: ?? 4. Flask JWT and Secret keys ?????????????????????????????????????????????
 echo  Enter a JWT secret key (press ENTER to auto-generate):
 set /p JWT_KEY="  > "
 if "!JWT_KEY!"=="" (
@@ -68,40 +96,48 @@ if "!SECRET_KEY!"=="" (
 
 echo.
 
-:: ── 3. Write backend\.env ────────────────────────────────────────────────────
-echo  [1/5] Writing backend\.env ...
+:: ?? 5. Write backend\.env ????????????????????????????????????????????????????
+echo  [1/3] Writing backend\.env ...
 
-set "WRITE_DB=!DB_URL!"
+set "WRITE_URL=!SUPABASE_URL!"
+set "WRITE_ANON=!SUPABASE_ANON_KEY!"
+set "WRITE_SERVICE=!SUPABASE_SERVICE_ROLE_KEY!"
 set "WRITE_JWT=!JWT_KEY!"
 set "WRITE_SEC=!SECRET_KEY!"
 
-python -c "import os,sys; lines=['DATABASE_URL='+os.environ['WRITE_DB'],'JWT_SECRET_KEY='+os.environ['WRITE_JWT'],'SECRET_KEY='+os.environ['WRITE_SEC'],'CORS_ORIGINS=http://localhost:3000,http://localhost:5173','FLASK_ENV=development','PORT=5000']; open('backend/.env','w',newline='\n').write('\n'.join(lines)+'\n'); print('OK')"
+python -c "
+import os
+lines = [
+    'SUPABASE_URL='             + os.environ['WRITE_URL'],
+    'SUPABASE_ANON_KEY='        + os.environ['WRITE_ANON'],
+    'SUPABASE_SERVICE_ROLE_KEY='+ os.environ['WRITE_SERVICE'],
+    'JWT_SECRET_KEY='           + os.environ['WRITE_JWT'],
+    'SECRET_KEY='               + os.environ['WRITE_SEC'],
+    'CORS_ORIGINS=http://localhost:3000,http://localhost:5173',
+    'FLASK_ENV=development',
+    'PORT=5000',
+]
+with open('backend/.env', 'w', newline='\n') as f:
+    f.write('\n'.join(lines) + '\n')
+print('OK')
+"
 
 if errorlevel 1 (
     echo  [ERROR] Could not write backend\.env
-    echo  Make sure Python is installed and the backend folder exists.
     goto :fail
 )
 echo  [OK] backend\.env written.
 echo.
 
-:: ── 4. Python check + install dependencies ───────────────────────────────────
-echo  [2/5] Checking Python ...
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo  [ERROR] Python not found. Install Python 3.10+ and re-run this script.
-    goto :fail
-)
-for /f "tokens=*" %%v in ('python --version 2^>^&1') do echo  [OK] %%v
-
+:: ?? 6. Install Python dependencies ???????????????????????????????????????????
+echo  [2/3] Installing Python dependencies ...
+echo  (This installs the supabase Python client - may take a minute)
 echo.
-echo  [3/5] Installing Python dependencies ...
-if exist ".venv\Scripts\python.exe" (
-    set PYTHON=".venv\Scripts\python.exe"
+
+if exist ".venv\Scripts\pip.exe" (
     set PIP=".venv\Scripts\pip.exe"
-    echo  [OK] Using existing virtual environment
+    echo  [OK] Using virtual environment
 ) else (
-    set PYTHON=python
     set PIP=pip
 )
 
@@ -113,86 +149,66 @@ if errorlevel 1 (
 echo  [OK] Dependencies installed.
 echo.
 
-:: ── 5. Run migrations ────────────────────────────────────────────────────────
-echo  [4/5] Running database migrations ...
-echo.
-echo  Choose migration mode:
-echo    [1] Schema only  (creates tables, no data)
-echo    [2] Schema + Seed data  (recommended for first setup)
-echo.
-set /p MIG_CHOICE="  Enter 1 or 2: "
+:: ?? 7. Test connection ????????????????????????????????????????????????????????
+echo  [3/3] Testing Supabase connection ...
 
-if "!MIG_CHOICE!"=="2" (
-    set MIG_FLAG=--seed
-    echo.
-    echo  Running: schema + seed data ...
-) else (
-    set MIG_FLAG=
-    echo.
-    echo  Running: schema only ...
+set "WRITE_URL=!SUPABASE_URL!"
+set "WRITE_SERVICE=!SUPABASE_SERVICE_ROLE_KEY!"
+
+python -c "
+import os, urllib.request, urllib.error, sys
+url = os.environ['WRITE_URL'].rstrip('/')
+key = os.environ['WRITE_SERVICE']
+req = urllib.request.Request(
+    url + '/rest/v1/',
+    headers={'apikey': key, 'Authorization': 'Bearer ' + key}
 )
-
-set DATABASE_URL=!DB_URL!
-!PYTHON! "backend\migrate.py" !MIG_FLAG!
-if errorlevel 1 (
-    echo.
-    echo  [ERROR] Migration failed. Check the error above.
-    echo.
-    echo  Common causes:
-    echo    - Wrong DATABASE_URL (check password, project ref)
-    echo    - Network/firewall blocking port 5432 or 6543
-    echo    - Supabase project is paused (free tier pauses after 1 week)
-    goto :fail
-)
-echo  [OK] Migrations complete.
-echo.
-
-:: ── 6. Connection test ───────────────────────────────────────────────────────
-echo  [5/5] Testing database connection ...
-set DATABASE_URL=!DB_URL!
-!PYTHON! -c "
-import os, sys
-os.environ['DATABASE_URL'] = sys.argv[1]
 try:
-    from backend.models.db import get_db
-    with get_db() as cur:
-        cur.execute('SELECT COUNT(*) AS n FROM users')
-        row = cur.fetchone()
-        print('[OK] Connected! users table has', row['n'], 'row(s).')
+    urllib.request.urlopen(req, timeout=10)
+    print('[OK] Supabase API connected!')
+except urllib.error.HTTPError as e:
+    if e.code < 500:
+        print('[OK] Supabase API reachable (HTTP ' + str(e.code) + ')')
+    else:
+        print('[ERROR] Server returned HTTP ' + str(e.code))
+        sys.exit(1)
 except Exception as e:
-    print('[ERROR]', e)
+    print('[ERROR] Cannot reach Supabase: ' + str(e))
     sys.exit(1)
-" "!DB_URL!"
+"
+
 if errorlevel 1 (
-    echo  [WARN] Direct import test skipped (run from backend folder).
-    echo         The migration succeeded, so the connection is working.
+    echo.
+    echo  [WARN] Connection test failed. Check your Project URL and keys.
+    echo  Your .env has been saved - fix the keys and re-run if needed.
+) else (
+    echo.
+    echo =====================================================
+    echo   SETUP COMPLETE!
+    echo =====================================================
+    echo.
+    echo  Credentials saved to backend\.env
+    echo.
+    echo  NEXT STEP - Run migrations manually:
+    echo  ?????????????????????????????????????????????????
+    echo   1. Open Supabase Dashboard
+    echo   2. Go to SQL Editor
+    echo   3. Paste and run: migrations\001_schema.sql
+    echo   4. Then paste and run: migrations\002_seed.sql
+    echo  ?????????????????????????????????????????????????
+    echo.
+    echo  After running migrations, start the app:
+    echo    cd backend
+    echo    python app.py
+    echo.
+    echo  Admin login:
+    echo    URL     : http://localhost:5173/admin/login
+    echo    Email   : admin@sssfoods.com
+    echo    Password: Admin@123
+    echo.
+    echo =====================================================
 )
 
-echo.
-echo =====================================================
-echo   SETUP COMPLETE!
-echo =====================================================
-echo.
-echo  Your Supabase database is ready.
-echo.
-echo  Next steps:
-echo    1. Run start.bat to launch the application
-echo    2. Login at http://localhost:3000/admin/login
-echo         Email   : admin@sssfoods.com
-echo         Password: Admin@123
-echo.
-if "!MIG_CHOICE!"=="2" (
-    echo  Seed data loaded:
-    echo    - Admin user, 8 packages, 5 staff members
-    echo    - Sample customers, bookings, invoices
-    echo.
-)
-echo  For production deployment on Render:
-echo    - Copy DATABASE_URL to Render environment variables
-echo    - Copy JWT_SECRET_KEY and SECRET_KEY as well
-echo    - Update CORS_ORIGINS to your Vercel frontend URL
-echo.
-echo =====================================================
 echo.
 goto :done
 
@@ -201,11 +217,6 @@ echo.
 echo =====================================================
 echo   SETUP FAILED - See error above
 echo =====================================================
-echo.
-echo  If you need help, check:
-echo    - Supabase dashboard logs
-echo    - backend\.env file contents
-echo    - migrations\001_schema.sql for table definitions
 echo.
 
 :done

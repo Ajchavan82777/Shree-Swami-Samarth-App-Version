@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from models.db import get_db, row_to_dict, rows_to_list, json_val
+from models.db import get_sb
 
 quotations_bp = Blueprint("quotations", __name__)
 
@@ -16,20 +16,17 @@ def _calc(items, discount, tax_rate):
 @quotations_bp.route("/", methods=["GET"])
 @jwt_required()
 def get_all():
-    with get_db() as cur:
-        cur.execute("SELECT * FROM quotations ORDER BY created_at DESC")
-        return jsonify(rows_to_list(cur.fetchall()))
+    result = get_sb().table("quotations").select("*").order("created_at", desc=True).execute()
+    return jsonify(result.data)
 
 
 @quotations_bp.route("/<int:id>", methods=["GET"])
 @jwt_required()
 def get_one(id):
-    with get_db() as cur:
-        cur.execute("SELECT * FROM quotations WHERE id = %s", (id,))
-        row = row_to_dict(cur.fetchone())
-    if not row:
+    result = get_sb().table("quotations").select("*").eq("id", id).execute()
+    if not result.data:
         return jsonify({"message": "Not found"}), 404
-    return jsonify(row)
+    return jsonify(result.data[0])
 
 
 @quotations_bp.route("/", methods=["POST"])
@@ -40,92 +37,75 @@ def create():
     discount = float(d.get("discount", 0))
     tax_rate = float(d.get("tax_rate", 5))
     subtotal, tax_amount, total = _calc(items, discount, tax_rate)
-    with get_db() as cur:
-        cur.execute("""
-            INSERT INTO quotations
-                (inquiry_id, customer_name, company_name, email, event_type,
-                 event_date, items, subtotal, discount, tax_rate, tax_amount,
-                 total, notes, status)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            RETURNING *
-        """, (
-            d.get("inquiry_id"), d.get("customer_name"), d.get("company_name"),
-            d.get("email"), d.get("event_type"), d.get("event_date"),
-            json_val(items), subtotal, discount, tax_rate, tax_amount, total,
-            d.get("notes"), d.get("status", "draft"),
-        ))
-        row = row_to_dict(cur.fetchone())
-    return jsonify(row), 201
+    row = {
+        "inquiry_id": d.get("inquiry_id"), "customer_name": d.get("customer_name"),
+        "company_name": d.get("company_name"), "email": d.get("email"),
+        "event_type": d.get("event_type"), "event_date": d.get("event_date"),
+        "items": items, "subtotal": subtotal, "discount": discount,
+        "tax_rate": tax_rate, "tax_amount": tax_amount, "total": total,
+        "notes": d.get("notes"), "status": d.get("status", "draft"),
+    }
+    result = get_sb().table("quotations").insert(row).execute()
+    return jsonify(result.data[0]), 201
 
 
 @quotations_bp.route("/<int:id>", methods=["PUT"])
 @jwt_required()
 def update(id):
-    d = request.get_json() or {}
-    with get_db() as cur:
-        cur.execute("SELECT * FROM quotations WHERE id = %s", (id,))
-        existing = row_to_dict(cur.fetchone())
-    if not existing:
+    existing_r = get_sb().table("quotations").select("*").eq("id", id).execute()
+    if not existing_r.data:
         return jsonify({"message": "Not found"}), 404
+    existing = existing_r.data[0]
 
+    d        = request.get_json() or {}
     items    = d.get("items",    existing["items"])
     discount = float(d.get("discount", existing["discount"]))
     tax_rate = float(d.get("tax_rate",  existing["tax_rate"]))
     subtotal, tax_amount, total = _calc(items, discount, tax_rate)
 
-    allowed = {"inquiry_id","customer_name","company_name","email","event_type","event_date","notes","status"}
+    allowed = {"inquiry_id", "customer_name", "company_name", "email",
+               "event_type", "event_date", "notes", "status"}
     sets = {k: v for k, v in d.items() if k in allowed}
-    sets.update({"items": json_val(items), "subtotal": subtotal,
-                 "discount": discount, "tax_rate": tax_rate,
-                 "tax_amount": tax_amount, "total": total})
-
-    cols = ", ".join(f"{k} = %s" for k in sets)
-    with get_db() as cur:
-        cur.execute(f"UPDATE quotations SET {cols} WHERE id = %s RETURNING *",
-                    (*sets.values(), id))
-        row = row_to_dict(cur.fetchone())
-    return jsonify(row)
+    sets.update({
+        "items": items, "subtotal": subtotal, "discount": discount,
+        "tax_rate": tax_rate, "tax_amount": tax_amount, "total": total,
+    })
+    result = get_sb().table("quotations").update(sets).eq("id", id).execute()
+    return jsonify(result.data[0])
 
 
 @quotations_bp.route("/<int:id>", methods=["DELETE"])
 @jwt_required()
 def delete(id):
-    with get_db() as cur:
-        cur.execute("DELETE FROM quotations WHERE id = %s RETURNING id", (id,))
-        if not cur.fetchone():
-            return jsonify({"message": "Not found"}), 404
+    result = get_sb().table("quotations").delete().eq("id", id).execute()
+    if not result.data:
+        return jsonify({"message": "Not found"}), 404
     return jsonify({"message": "Deleted"})
 
 
 @quotations_bp.route("/<int:id>/convert", methods=["POST"])
 @jwt_required()
 def convert_to_invoice(id):
-    with get_db() as cur:
-        cur.execute("SELECT * FROM quotations WHERE id = %s", (id,))
-        q = row_to_dict(cur.fetchone())
-    if not q:
+    q_r = get_sb().table("quotations").select("*").eq("id", id).execute()
+    if not q_r.data:
         return jsonify({"message": "Not found"}), 404
+    q = q_r.data[0]
 
     advance  = float((request.get_json() or {}).get("advance_paid", 0))
     balance  = round(float(q["total"]) - advance, 2)
     p_status = "paid" if balance <= 0 else ("partial" if advance > 0 else "unpaid")
 
-    with get_db() as cur:
-        cur.execute("""
-            INSERT INTO invoices
-                (quotation_id, customer_name, company_name, email,
-                 event_type, event_date, items, subtotal, discount,
-                 tax_rate, tax_amount, grand_total, advance_paid,
-                 balance_due, payment_status, invoice_date, notes)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_DATE,%s)
-            RETURNING *
-        """, (
-            id, q["customer_name"], q["company_name"], q["email"],
-            q["event_type"], q["event_date"],
-            json_val(q["items"]), q["subtotal"], q["discount"],
-            q["tax_rate"], q["tax_amount"], q["total"],
-            advance, balance, p_status, q.get("notes"),
-        ))
-        invoice = row_to_dict(cur.fetchone())
-        cur.execute("UPDATE quotations SET status = 'converted' WHERE id = %s", (id,))
-    return jsonify(invoice), 201
+    from datetime import date
+    inv_row = {
+        "quotation_id": id, "customer_name": q["customer_name"],
+        "company_name": q.get("company_name"), "email": q.get("email"),
+        "event_type": q.get("event_type"), "event_date": q.get("event_date"),
+        "items": q["items"], "subtotal": q["subtotal"], "discount": q["discount"],
+        "tax_rate": q["tax_rate"], "tax_amount": q["tax_amount"],
+        "grand_total": q["total"], "advance_paid": advance,
+        "balance_due": balance, "payment_status": p_status,
+        "invoice_date": date.today().isoformat(), "notes": q.get("notes"),
+    }
+    inv_r = get_sb().table("invoices").insert(inv_row).execute()
+    get_sb().table("quotations").update({"status": "converted"}).eq("id", id).execute()
+    return jsonify(inv_r.data[0]), 201
