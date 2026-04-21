@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ContentProvider } from './context/ContentContext';
 import Navbar from './components/public/Navbar';
@@ -18,6 +19,12 @@ import ReportsPage from './pages/admin/ReportsPage';
 import RolesPage from './pages/admin/RolesPage';
 import UsersPage from './pages/admin/UsersPage';
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [pathname]);
+  return null;
+}
+
 function PublicLayout({ children }) {
   return (<><Navbar /><main style={{ minHeight: '100vh' }}>{children}</main><Footer /></>);
 }
@@ -33,6 +40,7 @@ function App() {
     <AuthProvider>
       <ContentProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
           <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />

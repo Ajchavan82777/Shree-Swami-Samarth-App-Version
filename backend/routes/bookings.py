@@ -5,6 +5,10 @@ from models.db import get_sb
 bookings_bp = Blueprint("bookings", __name__)
 
 
+def _d(v):
+    return v if v else None
+
+
 @bookings_bp.route("/", methods=["GET"])
 @jwt_required()
 def get_all():
@@ -33,7 +37,7 @@ def create():
         "inquiry_id": d.get("inquiry_id"), "customer_id": d.get("customer_id"),
         "customer_name": d.get("customer_name"), "event_type": d.get("event_type"),
         "package_id": d.get("package_id"), "package_name": d.get("package_name"),
-        "event_date": d.get("event_date"), "venue": d.get("venue"),
+        "event_date": _d(d.get("event_date")), "event_end_date": _d(d.get("event_end_date")), "venue": d.get("venue"),
         "guest_count": d.get("guest_count"), "meal_preference": d.get("meal_preference"),
         "status": d.get("status", "confirmed"),
         "assigned_staff": d.get("assigned_staff", []),
@@ -52,10 +56,13 @@ def update(id):
     d       = request.get_json() or {}
     allowed = {
         "inquiry_id", "customer_id", "customer_name", "event_type", "package_id",
-        "package_name", "event_date", "venue", "guest_count", "meal_preference",
+        "package_name", "event_date", "event_end_date", "venue", "guest_count", "meal_preference",
         "status", "assigned_staff", "total_amount", "advance_paid", "balance_due", "notes",
     }
     sets = {k: v for k, v in d.items() if k in allowed}
+    for df in ("event_date", "event_end_date"):
+        if df in sets:
+            sets[df] = _d(sets[df])
     if not sets:
         return jsonify({"message": "Nothing to update"}), 400
     result = get_sb().table("bookings").update(sets).eq("id", id).execute()

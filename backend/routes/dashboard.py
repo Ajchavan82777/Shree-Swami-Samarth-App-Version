@@ -92,7 +92,7 @@ def get_dashboard():
 
     all_events = (
         sb.table("bookings")
-        .select("id, event_date, customer_name, event_type, status")
+        .select("id, event_date, event_end_date, customer_name, event_type, status, venue, total_amount")
         .gte("event_date", today).neq("status", "cancelled")
         .order("event_date").limit(100).execute().data
     )

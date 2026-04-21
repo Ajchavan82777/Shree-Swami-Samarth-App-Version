@@ -73,9 +73,9 @@ tr:hover td { background: var(--cream); }
 .badge-sent { background: #E3F2FD; color: #1565C0; }
 .badge-draft { background: #ECEFF1; color: #37474F; }
 .badge-converted { background: #E8F5E9; color: #2E7D32; }
-.stat-card { background: var(--white); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border); box-shadow: var(--shadow); }
-.stat-value { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: var(--maroon); line-height: 1; }
-.stat-label { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+.stat-card { background: var(--white); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; overflow: hidden; }
+.stat-value { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--maroon); line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: break-all; }
+.stat-label { font-size: 12px; color: var(--text-light); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stat-icon { width: 48px; height: 48px; border-radius: var(--radius); background: var(--cream-dark); display: flex; align-items: center; justify-content: center; color: var(--gold-dark); margin-bottom: 12px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(26,10,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(2px); }
 .modal { background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
@@ -162,6 +162,19 @@ tr:hover td { background: var(--cream); }
   .stat-value     { font-size: 24px; }
 }
 
+/* ── Invoice/Quotation form responsive grid helpers ─────────── */
+.inv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.inv-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.inv-items-header { display: grid; grid-template-columns: 1fr 72px 96px 88px 28px; gap: 6px; margin-bottom: 6px; }
+.inv-items-row    { display: grid; grid-template-columns: 1fr 72px 96px 88px 28px; gap: 6px; margin-bottom: 6px; align-items: center; }
+
+@media (max-width: 640px) {
+  .inv-grid-2 { grid-template-columns: 1fr !important; }
+  .inv-grid-3 { grid-template-columns: 1fr 1fr !important; }
+  .inv-items-header { display: none !important; }
+  .inv-items-row { grid-template-columns: 1fr 52px 72px 68px 22px !important; }
+}
+
 /* ── Admin portal mobile tweaks ─────────────────────────────── */
 @media (max-width: 768px) {
   /* Tighter content padding on small screens */
@@ -172,9 +185,9 @@ tr:hover td { background: var(--cream); }
     grid-template-columns: 1fr 1fr !important;
     gap: 12px !important;
   }
-  .stat-card  { padding: 16px; }
-  .stat-value { font-size: 22px; }
-  .stat-icon  { width: 38px; height: 38px; margin-bottom: 8px; }
+  .stat-card  { padding: 14px; }
+  .stat-value { font-size: 18px; }
+  .stat-icon  { width: 34px; height: 34px; margin-bottom: 6px; }
 
   /* Page header stacks on mobile */
   .page-header  { margin-bottom: 18px; gap: 10px; }

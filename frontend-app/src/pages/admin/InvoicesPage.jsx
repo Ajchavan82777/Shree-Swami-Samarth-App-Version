@@ -266,7 +266,7 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
           {/* Client */}
           <div className="card" style={{ marginBottom:16, padding:16 }}>
             <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Client Details</p>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <div className="inv-grid-2">
               <FieldGroup label="Client Name *"><input className="form-input" value={form.customer_name} onChange={e=>set('customer_name',e.target.value)} /></FieldGroup>
               <FieldGroup label="Company"><input className="form-input" value={form.company_name} onChange={e=>set('company_name',e.target.value)} /></FieldGroup>
               <FieldGroup label="Email"><input className="form-input" type="email" value={form.email} onChange={e=>set('email',e.target.value)} /></FieldGroup>
@@ -277,7 +277,7 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
           {/* Event */}
           <div className="card" style={{ marginBottom:16, padding:16 }}>
             <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Event Details</p>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <div className="inv-grid-2">
               {/* Event type with suggestions */}
               <FieldGroup label="Event Type">
                 <div style={{ position:'relative' }}>
@@ -306,11 +306,11 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
           {/* Line Items */}
           <div className="card" style={{ marginBottom:16, padding:16 }}>
             <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Line Items</p>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 72px 96px 88px 28px', gap:6, marginBottom:6 }}>
+            <div className="inv-items-header">
               {['Description','Qty','Rate (₹)','Total',''].map(h=><div key={h} style={{ fontSize:11, color:'var(--text-light)', textTransform:'uppercase' }}>{h}</div>)}
             </div>
             {form.items.map((item,i)=>(
-              <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 72px 96px 88px 28px', gap:6, marginBottom:6, alignItems:'center' }}>
+              <div key={i} className="inv-items-row">
                 <input className="form-input" placeholder="Description" value={item.description} onChange={e=>setItem(i,'description',e.target.value)} style={{ padding:'7px 10px', fontSize:13 }} />
                 <input className="form-input" type="number" value={item.qty} onChange={e=>setItem(i,'qty',e.target.value)} style={{ padding:'7px 8px', fontSize:13 }} />
                 <input className="form-input" type="number" value={item.rate} onChange={e=>setItem(i,'rate',e.target.value)} style={{ padding:'7px 8px', fontSize:13 }} />
@@ -324,7 +324,7 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
           {/* GST & Totals */}
           <div className="card" style={{ marginBottom:16, padding:16 }}>
             <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Tax & Totals</p>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:12 }}>
+            <div className="inv-grid-3" style={{ marginBottom:12 }}>
               <FieldGroup label="GST Type">
                 <select className="form-select" value={form.gst_type} onChange={e=>set('gst_type',e.target.value)}>
                   {GST_TYPES.map(g=><option key={g.value} value={g.value}>{g.label}</option>)}
@@ -362,7 +362,7 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
           {/* Template settings (in form panel) */}
           <div className="card" style={{ padding:16, marginBottom:16 }}>
             <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Invoice Appearance</p>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <div className="inv-grid-2">
               <FieldGroup label="Template">
                 <select className="form-select" value={template} onChange={e=>setTemplate(e.target.value)}>
                   {TEMPLATES.map(tp=><option key={tp.id} value={tp.id}>{tp.icon} {tp.name}</option>)}
