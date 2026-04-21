@@ -50,6 +50,7 @@ from routes.packages import packages_bp
 from routes.staff import staff_bp
 from routes.reports import reports_bp
 from routes.health import health_bp
+from routes.roles import roles_bp
 
 app.register_blueprint(content_bp,     url_prefix="/api/content")
 app.register_blueprint(auth_bp,        url_prefix="/api/auth")
@@ -64,6 +65,7 @@ app.register_blueprint(packages_bp,    url_prefix="/api/packages")
 app.register_blueprint(staff_bp,       url_prefix="/api/staff")
 app.register_blueprint(reports_bp,     url_prefix="/api/reports")
 app.register_blueprint(health_bp,      url_prefix="/api")
+app.register_blueprint(roles_bp,       url_prefix="/api/roles")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

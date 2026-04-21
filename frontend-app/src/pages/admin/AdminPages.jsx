@@ -1,20 +1,57 @@
-import { useState, useEffect } from 'react';
-import { Plus, X, Eye, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, X, Eye, Trash2, Download, ChevronDown } from 'lucide-react';
 import api, { fmt, fmtDate, cap } from '../../utils/api';
+import { downloadCSV, downloadExcel, downloadWordTable, downloadPrintTable } from '../../utils/tableExport';
 
-// ---- SHARED SIMPLE CRUD TABLE ----
-function CrudTable({ title, columns, rows, onView, onEdit, onDelete, onCreate, loading }) {
+// ---- SHARED SIMPLE CRUD TABLE (with Export) ----
+function CrudTable({ title, columns, rows, onView, onEdit, onDelete, onCreate, loading, exportFilename }) {
+  const [dlOpen, setDlOpen] = useState(false);
+  const tableRef = useRef(null);
+  const fname = exportFilename || title.replace(/\s+/g, '_');
+
+  const EXPORT_OPTS = [
+    { label: '📄 CSV',        fn: () => downloadCSV(rows, columns, fname) },
+    { label: '📊 Excel',      fn: () => downloadExcel(rows, columns, fname) },
+    { label: '📝 Word',       fn: () => downloadWordTable(rows, columns, fname) },
+    { label: '🖨 Print / PDF', fn: () => downloadPrintTable(tableRef.current, fname) },
+  ];
+
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{title}</h1>
-        {onCreate && <button className="btn btn-primary btn-sm" onClick={onCreate}><Plus size={16} /> New</button>}
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {rows.length > 0 && (
+            <div style={{ position:'relative' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setDlOpen(o => !o)}
+                style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <Download size={14} /> Export <ChevronDown size={12} />
+              </button>
+              {dlOpen && (
+                <>
+                  <div style={{ position:'fixed', inset:0, zIndex:98 }} onClick={() => setDlOpen(false)} />
+                  <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'#fff', border:'1px solid var(--border)', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,0.12)', zIndex:99, minWidth:150, overflow:'hidden' }}>
+                    {EXPORT_OPTS.map(o => (
+                      <button key={o.label} onClick={() => { o.fn(); setDlOpen(false); }}
+                        style={{ display:'block', width:'100%', padding:'10px 16px', border:'none', background:'transparent', textAlign:'left', cursor:'pointer', fontSize:13, whiteSpace:'nowrap' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--cream)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {onCreate && <button className="btn btn-primary btn-sm" onClick={onCreate}><Plus size={16} /> New</button>}
+        </div>
       </div>
       <div className="card">
         {loading ? <div className="loading">Loading...</div> : rows.length === 0 ? (
           <div className="empty"><div className="empty-icon">📋</div>No records found</div>
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap" ref={tableRef}>
             <table>
               <thead><tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}<th>Actions</th></tr></thead>
               <tbody>

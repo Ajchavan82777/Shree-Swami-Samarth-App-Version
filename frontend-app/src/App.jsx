@@ -11,8 +11,12 @@ import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import InquiriesPage from './pages/admin/InquiriesPage';
 import InvoicesPage from './pages/admin/InvoicesPage';
-import { CorporatePage, BookingsPage, CustomersPage, PackagesAdminPage, StaffPage, QuotationsPage, ReportsPage, SettingsPage } from './pages/admin/AdminPages';
+import { CorporatePage, BookingsPage, CustomersPage, PackagesAdminPage, StaffPage, SettingsPage } from './pages/admin/AdminPages';
 import ContentPage from './pages/admin/ContentPage';
+import QuotationsPage from './pages/admin/QuotationsPage';
+import ReportsPage from './pages/admin/ReportsPage';
+import RolesPage from './pages/admin/RolesPage';
+import UsersPage from './pages/admin/UsersPage';
 
 function PublicLayout({ children }) {
   return (<><Navbar /><main style={{ minHeight: '100vh' }}>{children}</main><Footer /></>);
@@ -57,6 +61,8 @@ function App() {
           <Route path="/admin/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/admin/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/admin/content"  element={<ProtectedRoute><ContentPage /></ProtectedRoute>} />
+          <Route path="/admin/roles"    element={<ProtectedRoute><RolesPage /></ProtectedRoute>} />
+          <Route path="/admin/users"    element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
           <Route path="*" element={<PublicLayout><div style={{textAlign:'center',padding:'120px 24px'}}><h1 style={{fontFamily:'Playfair Display,serif',fontSize:80,color:'var(--gold)'}}>404</h1><p>Page not found</p><a href="/" className="btn btn-primary">Go Home</a></div></PublicLayout>} />
         </Routes>
       </BrowserRouter>

@@ -1,29 +1,32 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../utils/api';
 import {
   LayoutDashboard, MessageSquare, Users, Building2, Calendar,
   FileText, Receipt, Package, UserCheck, BarChart2, Settings,
-  LogOut, Menu, X, ChefHat, Layers
+  LogOut, Menu, X, ChefHat, Layers, Shield
 } from 'lucide-react';
 
-const navItems = [
-  { path: '/admin/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/admin/inquiries',  icon: MessageSquare,   label: 'Inquiries' },
-  { path: '/admin/customers',  icon: Users,           label: 'Customers' },
-  { path: '/admin/corporate',  icon: Building2,       label: 'Corporate' },
-  { path: '/admin/bookings',   icon: Calendar,        label: 'Bookings' },
-  { path: '/admin/quotations', icon: FileText,        label: 'Quotations' },
-  { path: '/admin/invoices',   icon: Receipt,         label: 'Invoices' },
-  { path: '/admin/packages',   icon: Package,         label: 'Packages' },
-  { path: '/admin/staff',      icon: UserCheck,       label: 'Staff' },
-  { path: '/admin/reports',    icon: BarChart2,       label: 'Reports' },
-  { path: '/admin/content',    icon: Layers,          label: 'Website Content' },
-  { path: '/admin/settings',   icon: Settings,        label: 'Settings' },
+const ALL_NAV = [
+  { path: '/admin/dashboard',  icon: LayoutDashboard, label: 'Dashboard',      key: 'dashboard'  },
+  { path: '/admin/inquiries',  icon: MessageSquare,   label: 'Inquiries',       key: 'inquiries'  },
+  { path: '/admin/customers',  icon: Users,           label: 'Customers',       key: 'customers'  },
+  { path: '/admin/corporate',  icon: Building2,       label: 'Corporate',       key: 'corporate'  },
+  { path: '/admin/bookings',   icon: Calendar,        label: 'Bookings',        key: 'bookings'   },
+  { path: '/admin/quotations', icon: FileText,        label: 'Quotations',      key: 'quotations' },
+  { path: '/admin/invoices',   icon: Receipt,         label: 'Invoices',        key: 'invoices'   },
+  { path: '/admin/packages',   icon: Package,         label: 'Packages',        key: 'packages'   },
+  { path: '/admin/staff',      icon: UserCheck,       label: 'Staff',           key: 'staff'      },
+  { path: '/admin/reports',    icon: BarChart2,       label: 'Reports',         key: 'reports'    },
+  { path: '/admin/content',    icon: Layers,          label: 'Website Content', key: 'content'    },
+  { path: '/admin/settings',   icon: Settings,        label: 'Settings',        key: 'settings'   },
+  { path: '/admin/roles',      icon: Shield,          label: 'Roles & Access',  key: 'roles'      },
+  { path: '/admin/users',      icon: Users,           label: 'Users',            key: 'users'      },
 ];
 
 /* Nav list always rendered with icon + label */
-function NavLinks({ onClose }) {
+function NavLinks({ onClose, navItems }) {
   const loc = useLocation();
   return (
     <nav style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
@@ -56,7 +59,7 @@ function NavLinks({ onClose }) {
 }
 
 /* Icon-only nav for collapsed desktop sidebar */
-function CollapsedNav() {
+function CollapsedNav({ navItems }) {
   const loc = useLocation();
   return (
     <nav style={{ flex: 1, padding: '8px 4px', overflowY: 'auto' }}>
@@ -116,11 +119,27 @@ function SidebarFooter({ user, onLogout, showText }) {
 export default function AdminLayout({ children }) {
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [permissions, setPermissions] = useState(null);
   const { user, logout } = useAuth();
   const loc = useLocation();
   const nav = useNavigate();
 
   const handleLogout = () => { logout(); nav('/admin/login'); };
+
+  /* Fetch role permissions after user loads */
+  useEffect(() => {
+    if (!user) return;
+    const role = user.role || 'admin';
+    if (role === 'admin') { setPermissions(null); return; } // admin sees all
+    api.get(`/roles/${role}`)
+      .then(r => setPermissions(r.data.permissions || {}))
+      .catch(() => setPermissions(null));
+  }, [user]);
+
+  /* Filter nav based on permissions; admin always sees all */
+  const navItems = (permissions && user?.role !== 'admin')
+    ? ALL_NAV.filter(n => permissions[n.key] !== false)
+    : ALL_NAV;
 
   /* Close drawer on route change */
   useEffect(() => { setMobileOpen(false); }, [loc.pathname]);
@@ -131,7 +150,7 @@ export default function AdminLayout({ children }) {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const pageTitle = navItems.find(n => n.path === loc.pathname)?.label || 'Admin';
+  const pageTitle = ALL_NAV.find(n => n.path === loc.pathname)?.label || 'Admin';
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--cream)', overflow: 'hidden' }}>
@@ -162,7 +181,7 @@ export default function AdminLayout({ children }) {
           )}
         </div>
 
-        {collapsed ? <CollapsedNav /> : <NavLinks onClose={() => {}} />}
+        {collapsed ? <CollapsedNav navItems={navItems} /> : <NavLinks navItems={navItems} onClose={() => {}} />}
 
         <SidebarFooter user={user} onLogout={handleLogout} showText={!collapsed} />
       </aside>
@@ -208,7 +227,7 @@ export default function AdminLayout({ children }) {
             </div>
 
             {/* Nav links with labels */}
-            <NavLinks onClose={() => setMobileOpen(false)} />
+            <NavLinks navItems={navItems} onClose={() => setMobileOpen(false)} />
 
             <SidebarFooter user={user} onLogout={() => { setMobileOpen(false); handleLogout(); }} showText />
           </aside>

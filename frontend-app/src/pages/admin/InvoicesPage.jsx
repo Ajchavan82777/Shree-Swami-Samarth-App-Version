@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, X, Printer, Eye, Trash2, Download, Palette, Type, ChevronDown, Search } from 'lucide-react';
+import { Plus, X, Printer, Eye, Trash2, Download, Edit2, Search, FileImage, FileText } from 'lucide-react';
 import api, { fmt, fmtDate, cap } from '../../utils/api';
-import { InvoicePreview, FONTS, THEMES, TEMPLATES, GST_TYPES, gstLines } from '../../components/admin/InvoiceTemplates';
+import { InvoicePreview, FONTS, THEMES, TEMPLATES, GST_TYPES, gstLines, downloadPDF, downloadJPG, downloadWord } from '../../components/admin/InvoiceTemplates';
 import { useContent } from '../../context/ContentContext';
 
 const EVENT_TYPES = [
@@ -130,9 +130,21 @@ function PreviewModal({ invoice, onClose, company }) {
             style={{ padding:'5px 10px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, width:180 }} />
         )}
 
-        <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
-          <button onClick={handlePrint} style={{ padding:'6px 14px', borderRadius:6, background:'var(--gold)', color:'var(--dark)', border:'none', cursor:'pointer', fontWeight:700, fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
-            <Printer size={13} /> Print / PDF
+        <div style={{ marginLeft:'auto', display:'flex', gap:6, flexWrap:'wrap' }}>
+          <button onClick={handlePrint} title="Print" style={{ padding:'6px 12px', borderRadius:6, background:'rgba(255,255,255,0.12)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
+            <Printer size={13} /> Print
+          </button>
+          <button onClick={async()=>{ await downloadPDF(printRef.current, invoice.invoice_number||'invoice'); }} title="Download PDF"
+            style={{ padding:'6px 12px', borderRadius:6, background:'#dc2626', color:'#fff', border:'none', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
+            <Download size={13} /> PDF
+          </button>
+          <button onClick={async()=>{ await downloadJPG(printRef.current, invoice.invoice_number||'invoice'); }} title="Download JPG"
+            style={{ padding:'6px 12px', borderRadius:6, background:'#2563eb', color:'#fff', border:'none', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
+            <FileImage size={13} /> JPG
+          </button>
+          <button onClick={()=>downloadWord(printRef.current, invoice.invoice_number||'invoice', invoice.invoice_number)} title="Download Word"
+            style={{ padding:'6px 12px', borderRadius:6, background:'#1d4ed8', color:'#fff', border:'none', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
+            <FileText size={13} /> Word
           </button>
           <button onClick={onClose} style={{ padding:'6px 10px', borderRadius:6, background:'rgba(255,255,255,0.1)', color:'#fff', border:'none', cursor:'pointer' }}><X size={16}/></button>
         </div>
@@ -149,12 +161,28 @@ function PreviewModal({ invoice, onClose, company }) {
 }
 
 // ─── Invoice Form (Create / Edit) ─────────────────────────────────────────────
-function InvoiceForm({ onSave, onClose, company }) {
+function InvoiceForm({ onSave, onClose, company, editInvoice }) {
   const { get: cget } = useContent();
-  // Prefer invoice_logo_url, fall back to logo_url from settings
   const settingsLogo = cget('company','invoice_logo_url','') || cget('company','logo_url','');
+  const isEdit = !!editInvoice;
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(editInvoice ? {
+    customer_name: editInvoice.customer_name || '',
+    company_name:  editInvoice.company_name  || '',
+    email:         editInvoice.email         || '',
+    phone:         editInvoice.phone         || '',
+    event_type:    editInvoice.event_type    || '',
+    event_date:    editInvoice.event_date    || '',
+    venue:         editInvoice.venue         || '',
+    items:         editInvoice.items?.length ? editInvoice.items : [{ description:'', qty:1, rate:0, total:0 }],
+    discount:      parseFloat(editInvoice.discount)     || 0,
+    tax_rate:      parseFloat(editInvoice.tax_rate)     || 18,
+    gst_type:      editInvoice.gst_type      || 'sgst_cgst',
+    advance_paid:  parseFloat(editInvoice.advance_paid) || 0,
+    notes:         editInvoice.notes         || '',
+    invoice_date:  editInvoice.invoice_date  || new Date().toISOString().split('T')[0],
+    due_date:      editInvoice.due_date      || '',
+  } : {
     customer_name:'', company_name:'', email:'', phone:'',
     event_type:'', event_date:'', venue:'',
     items:[{ description:'', qty:1, rate:0, total:0 }],
@@ -199,7 +227,11 @@ function InvoiceForm({ onSave, onClose, company }) {
     if (!form.customer_name) return alert('Client name is required');
     setSaving(true);
     try {
-      await api.post('/invoices/', form);
+      if (isEdit) {
+        await api.put(`/invoices/${editInvoice.id}`, form);
+      } else {
+        await api.post('/invoices/', form);
+      }
       onSave();
     } catch(e) { alert('Error: '+e.message); } finally { setSaving(false); }
   };
@@ -210,7 +242,7 @@ function InvoiceForm({ onSave, onClose, company }) {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:900, display:'flex', flexDirection:'column', overflow:'hidden' }}>
       {/* Header */}
       <div style={{ background:'var(--dark)', padding:'12px 20px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-        <span style={{ color:'var(--gold)', fontWeight:700, fontSize:16 }}>Create Invoice</span>
+        <span style={{ color:'var(--gold)', fontWeight:700, fontSize:16 }}>{isEdit ? 'Edit Invoice' : 'Create Invoice'}</span>
         <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
           {/* Mobile tabs */}
           <div style={{ display:'flex', gap:4 }}>
@@ -388,7 +420,7 @@ function InvoiceForm({ onSave, onClose, company }) {
           <div style={{ display:'flex', gap:10, paddingBottom:24 }}>
             <button className="btn btn-ghost" onClick={onClose} style={{ flex:1 }}>Cancel</button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ flex:2, justifyContent:'center' }}>
-              {saving?'Creating...':'✓ Create Invoice'}
+              {saving ? (isEdit?'Saving...':'Creating...') : (isEdit?'✓ Update Invoice':'✓ Create Invoice')}
             </button>
           </div>
         </div>
@@ -411,8 +443,9 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState('');
   const [search,  setSearch]  = useState('');
-  const [preview, setPreview] = useState(null);
-  const [creating,setCreating]= useState(false);
+  const [preview, setPreview]   = useState(null);
+  const [creating,setCreating]  = useState(false);
+  const [editing, setEditing]   = useState(null);
   const { get } = useContent();
 
   const company = {
@@ -459,8 +492,9 @@ export default function InvoicesPage() {
 
   return (
     <div>
-      {preview   && <PreviewModal invoice={preview} onClose={()=>setPreview(null)} company={company} />}
-      {creating  && <InvoiceForm  onSave={()=>{ load(); setCreating(false); }} onClose={()=>setCreating(false)} company={company} />}
+      {preview  && <PreviewModal invoice={preview} onClose={()=>setPreview(null)} company={company} />}
+      {creating && <InvoiceForm  onSave={()=>{ load(); setCreating(false); }} onClose={()=>setCreating(false)} company={company} />}
+      {editing  && <InvoiceForm  onSave={()=>{ load(); setEditing(null);   }} onClose={()=>setEditing(null)}   company={company} editInvoice={editing} />}
 
       <div className="page-header" style={{ flexWrap:'wrap', gap:10 }}>
         <h1 className="page-title">Invoices & Billing</h1>
@@ -523,7 +557,8 @@ export default function InvoicesPage() {
                     <td><StatusBadge s={inv.payment_status} /></td>
                     <td>
                       <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                        <button className="btn btn-ghost btn-sm" onClick={()=>setPreview(inv)} title="View & Print"><Eye size={13}/></button>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>setPreview(inv)} title="Preview & Download"><Eye size={13}/></button>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>setEditing(inv)} title="Edit Invoice"><Edit2 size={13}/></button>
                         {parseFloat(inv.balance_due)>0 && (
                           <button className="btn btn-ghost btn-sm" onClick={()=>handlePayment(inv)} title="Record Payment" style={{ color:'var(--success)', fontWeight:700 }}>₹+</button>
                         )}
