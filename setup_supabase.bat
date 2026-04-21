@@ -70,15 +70,16 @@ echo.
 
 :: ── 3. Write backend\.env ────────────────────────────────────────────────────
 echo  [1/5] Writing backend\.env ...
-(
-    echo DATABASE_URL=!DB_URL!
-    echo JWT_SECRET_KEY=!JWT_KEY!
-    echo SECRET_KEY=!SECRET_KEY!
-    echo CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-) > "backend\.env"
+
+set "WRITE_DB=!DB_URL!"
+set "WRITE_JWT=!JWT_KEY!"
+set "WRITE_SEC=!SECRET_KEY!"
+
+python -c "import os,sys; lines=['DATABASE_URL='+os.environ['WRITE_DB'],'JWT_SECRET_KEY='+os.environ['WRITE_JWT'],'SECRET_KEY='+os.environ['WRITE_SEC'],'CORS_ORIGINS=http://localhost:3000,http://localhost:5173','FLASK_ENV=development','PORT=5000']; open('backend/.env','w',newline='\n').write('\n'.join(lines)+'\n'); print('OK')"
 
 if errorlevel 1 (
     echo  [ERROR] Could not write backend\.env
+    echo  Make sure Python is installed and the backend folder exists.
     goto :fail
 )
 echo  [OK] backend\.env written.

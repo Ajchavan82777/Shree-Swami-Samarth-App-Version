@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git -C \"c:/Users/ajchavan/Music/shree-swami-samarth-catering-app/sss\" status)"
+      "Bash(git -C \"c:/Users/ajchavan/Music/shree-swami-samarth-catering-app/sss\" status)",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\ajchavan\\\\Music\\\\shree-swami-samarth-catering-app\\\\sss\\\\.venv\\\\Scripts\" -Force | ForEach-Object { $_.Name })"
     ]
   }
 }
