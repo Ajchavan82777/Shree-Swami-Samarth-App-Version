@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ChefHat, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
-  const [form, setForm] = useState({ email: 'admin@shreeswamisamarthfoods.demo', password: 'Admin@123' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
-  const { login, loading } = useAuth();
+  const { login, loading, user } = useAuth();
   const nav = useNavigate();
+
+  // Already logged in → go straight to dashboard
+  useEffect(() => {
+    if (user) nav('/admin/dashboard', { replace: true });
+  }, [user, nav]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,6 +22,8 @@ export default function LoginPage() {
     if (res.success) nav('/admin/dashboard');
     else setError(res.message);
   };
+
+  const fillDemo = () => setForm({ email: 'admin@shreeswamisamarthfoods.demo', password: 'Admin@123' });
 
   return (
     <div style={{
@@ -44,10 +51,15 @@ export default function LoginPage() {
           <p style={{ fontSize: 14, color: 'var(--text-light)', marginBottom: 28 }}>Sign in to your admin account</p>
 
           {/* Demo hint */}
-          <div style={{ background: '#E8EAF6', border: '1px solid #C5CAE9', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
-            <p style={{ fontSize: 12, color: '#283593', fontWeight: 600, marginBottom: 2 }}>🔑 Demo Credentials</p>
-            <p style={{ fontSize: 12, color: '#3949AB' }}>Email: admin@shreeswamisamarthfoods.demo</p>
-            <p style={{ fontSize: 12, color: '#3949AB' }}>Password: Admin@123</p>
+          <div style={{ background: '#E8EAF6', border: '1px solid #C5CAE9', borderRadius: 8, padding: '10px 14px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <div>
+              <p style={{ fontSize: 12, color: '#283593', fontWeight: 600, marginBottom: 2 }}>🔑 Demo Account Available</p>
+              <p style={{ fontSize: 11, color: '#5c6bc0' }}>Click to fill demo admin credentials</p>
+            </div>
+            <button type="button" onClick={fillDemo}
+              style={{ padding: '6px 14px', borderRadius: 6, background: '#3949AB', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              Use Demo
+            </button>
           </div>
 
           {error && <div className="alert alert-error">{error}</div>}
