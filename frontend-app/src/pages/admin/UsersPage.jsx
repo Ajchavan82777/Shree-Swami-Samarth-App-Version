@@ -72,7 +72,7 @@ export default function UsersPage() {
 
   // ─── Create ───────────────────────────────────────────────────────────────
   const openCreate = () => {
-    setCreateForm({ ...EMPTY_CREATE, role: roles[0]?.name || '' });
+    setCreateForm({ ...EMPTY_CREATE, role: roles[0]?.role_name || '' });
     setCreateErrors({});
     setShowCreatePwd(false);
     setShowCreate(true);
@@ -305,7 +305,7 @@ export default function UsersPage() {
                 >
                   <option value="">Select role…</option>
                   {roles.map(r => (
-                    <option key={r.name || r.id} value={r.name || r.id}>{r.name || r.id}</option>
+                    <option key={r.role_name} value={r.role_name}>{r.role_name}</option>
                   ))}
                 </select>
               </FormField>
@@ -339,7 +339,7 @@ export default function UsersPage() {
                 >
                   <option value="">Select role…</option>
                   {roles.map(r => (
-                    <option key={r.name || r.id} value={r.name || r.id}>{r.name || r.id}</option>
+                    <option key={r.role_name} value={r.role_name}>{r.role_name}</option>
                   ))}
                 </select>
               </FormField>

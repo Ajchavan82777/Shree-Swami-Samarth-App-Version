@@ -120,7 +120,8 @@ function SidebarFooter({ user, onLogout, showText }) {
 export default function AdminLayout({ children }) {
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [permissions, setPermissions] = useState(null);
+  // 'loading' = not yet fetched, null = admin (all access), object = role permissions
+  const [permissions, setPermissions] = useState('loading');
   const { user, logout } = useAuth();
   const loc = useLocation();
   const nav = useNavigate();
@@ -131,16 +132,29 @@ export default function AdminLayout({ children }) {
   useEffect(() => {
     if (!user) return;
     const role = user.role || 'admin';
-    if (role === 'admin') { setPermissions(null); return; } // admin sees all
+    if (role === 'admin') { setPermissions(null); return; }
     api.get(`/roles/${role}`)
       .then(r => setPermissions(r.data.permissions || {}))
-      .catch(() => setPermissions(null));
+      .catch(() => setPermissions({})); // {} = no access on API failure
   }, [user]);
 
+  /* Route-level guard: redirect if user navigates directly to a restricted page */
+  useEffect(() => {
+    if (permissions === 'loading') return;
+    if (permissions === null) return; // admin — all pages allowed
+    const allowedPaths = [
+      '/admin/dashboard', // always allow dashboard as fallback landing
+      ...ALL_NAV.filter(n => permissions[n.key] === true).map(n => n.path),
+    ];
+    if (!allowedPaths.includes(loc.pathname)) {
+      nav('/admin/dashboard', { replace: true });
+    }
+  }, [permissions, loc.pathname, nav]);
+
   /* Filter nav based on permissions; admin always sees all */
-  const navItems = (permissions && user?.role !== 'admin')
-    ? ALL_NAV.filter(n => permissions[n.key] !== false)
-    : ALL_NAV;
+  const navItems = (permissions === 'loading' || permissions === null)
+    ? ALL_NAV
+    : ALL_NAV.filter(n => n.key === 'dashboard' || permissions[n.key] === true);
 
   /* Close drawer on route change */
   useEffect(() => { setMobileOpen(false); }, [loc.pathname]);
