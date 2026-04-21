@@ -513,6 +513,68 @@ function KpiCard({ Icon, label, value, color, iconColor, onClick }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Widget Pins – quick-action shortcuts, stored in localStorage
+───────────────────────────────────────────────────────────────────────────── */
+const PIN_KEY      = 'sss_dashboard_pins';
+const DEFAULT_PINS = ['invoice', 'quotation'];
+const ALL_PINS = [
+  { key: 'invoice',   label: 'Create Invoice',   icon: '🧾', to: '/admin/invoices',   color: '#fee2e2', text: '#991b1b' },
+  { key: 'quotation', label: 'Create Quotation', icon: '📋', to: '/admin/quotations', color: '#ede9fe', text: '#5b21b6' },
+  { key: 'inquiry',   label: 'New Inquiry',      icon: '💬', to: '/admin/inquiries',  color: '#dbeafe', text: '#1e40af' },
+  { key: 'booking',   label: 'New Booking',      icon: '📅', to: '/admin/bookings',   color: '#dcfce7', text: '#166534' },
+  { key: 'customer',  label: 'New Customer',     icon: '👤', to: '/admin/customers',  color: '#fef9c3', text: '#854d0e' },
+  { key: 'package',   label: 'New Package',      icon: '📦', to: '/admin/packages',   color: '#fce7f3', text: '#9d174d' },
+  { key: 'reports',   label: 'View Reports',     icon: '📊', to: '/admin/reports',    color: '#f0fdf4', text: '#166534' },
+  { key: 'staff',     label: 'View Staff',       icon: '👥', to: '/admin/staff',      color: '#f5f3ff', text: '#4c1d95' },
+];
+
+function QuickPins() {
+  const nav = useNavigate();
+  const [pins, setPins] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(PIN_KEY)) || DEFAULT_PINS; }
+    catch { return [...DEFAULT_PINS]; }
+  });
+  const [editing, setEditing] = useState(false);
+
+  const savePins = (next) => { setPins(next); localStorage.setItem(PIN_KEY, JSON.stringify(next)); };
+  const toggle   = (key)  => savePins(pins.includes(key) ? pins.filter(k => k !== key) : [...pins, key]);
+
+  const visible  = ALL_PINS.filter(p => pins.includes(p.key));
+  const hidden   = ALL_PINS.filter(p => !pins.includes(p.key));
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Actions</span>
+        <button onClick={() => setEditing(e => !e)}
+          style={{ background: 'none', border: '1px solid var(--border)', cursor: 'pointer', fontSize: 11, color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 6 }}>
+          ⚙ {editing ? 'Done' : 'Edit Widgets'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {visible.map(p => (
+          <button key={p.key} onClick={() => !editing && nav(p.to)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, background: p.color, border: editing ? `2px solid ${p.text}` : `1px solid transparent`, color: p.text, cursor: editing ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', position: 'relative' }}>
+            <span style={{ fontSize: 17 }}>{p.icon}</span>
+            {p.label}
+            {editing && (
+              <span onClick={e => { e.stopPropagation(); toggle(p.key); }}
+                style={{ marginLeft: 4, cursor: 'pointer', opacity: 0.7, fontSize: 15, fontWeight: 700, lineHeight: 1 }}>×</span>
+            )}
+          </button>
+        ))}
+        {editing && hidden.map(p => (
+          <button key={p.key} onClick={() => toggle(p.key)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, background: '#f9fafb', border: '1px dashed #d1d5db', color: '#9ca3af', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+            <span style={{ fontSize: 17 }}>{p.icon}</span>+ {p.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Main DashboardPage
 ───────────────────────────────────────────────────────────────────────────── */
 const PERIODS = [
@@ -567,14 +629,12 @@ export default function DashboardPage() {
   const { summary, recent_inquiries, recent_invoices, upcoming_events, all_events, pipeline } = data;
 
   const KPI_CARDS = [
-    { icon: MessageSquare, label: 'Total Inquiries',   value: summary.total_inquiries,         color: '#E3F2FD', iconColor: '#1565C0', dd: { title: 'Total Inquiries',   endpoint: '/inquiries/',  type: 'inquiries'  } },
-    { icon: Building2,     label: 'Corporate Leads',   value: summary.corporate_leads,          color: '#E8EAF6', iconColor: '#283593', dd: { title: 'Corporate Leads',   endpoint: '/inquiries/',  type: 'corporate'  } },
-    { icon: Calendar,      label: 'Total Bookings',    value: summary.total_bookings,           color: '#E8F5E9', iconColor: '#2E7D32', dd: { title: 'Total Bookings',    endpoint: '/bookings/',   type: 'bookings'   } },
-    { icon: Clock,         label: 'Upcoming Events',   value: summary.upcoming_events,          color: '#FFF3E0', iconColor: '#E65100', dd: { title: 'Upcoming Events',   endpoint: '/bookings/',   type: 'upcoming'   } },
-    { icon: IndianRupee,   label: 'Pending Amount',    value: fmt(summary.pending_amount),      color: '#FFEBEE', iconColor: '#C62828', dd: { title: 'Unpaid / Partial',  endpoint: '/invoices/',   type: 'unpaid'     } },
-    { icon: TrendingUp,    label: 'Revenue Collected', value: fmt(summary.total_revenue),       color: '#F3E5F5', iconColor: '#6A1B9A', dd: { title: 'Revenue Collected', endpoint: '/invoices/',   type: 'paid'       } },
-    { icon: FileText,      label: 'Quotations',        value: summary.total_quotations ?? '—',  color: '#E0F7FA', iconColor: '#00695C', dd: { title: 'All Quotations',    endpoint: '/quotations/', type: 'quotations' } },
-    { icon: Receipt,       label: 'Paid Invoices',     value: summary.paid_invoices,            color: '#F9FBE7', iconColor: '#558B2F', dd: { title: 'Paid Invoices',     endpoint: '/invoices/',   type: 'paid'       } },
+    { icon: MessageSquare, label: 'Total Inquiries',   value: summary.total_inquiries,        color: '#E3F2FD', iconColor: '#1565C0', dd: { title: 'Total Inquiries',   endpoint: '/inquiries/',  type: 'inquiries'  } },
+    { icon: Calendar,      label: 'Total Bookings',    value: summary.total_bookings,          color: '#E8F5E9', iconColor: '#2E7D32', dd: { title: 'Total Bookings',    endpoint: '/bookings/',   type: 'bookings'   } },
+    { icon: Clock,         label: 'Upcoming Events',   value: summary.upcoming_events,         color: '#FFF3E0', iconColor: '#E65100', dd: { title: 'Upcoming Events',   endpoint: '/bookings/',   type: 'upcoming'   } },
+    { icon: IndianRupee,   label: 'Pending Amount',    value: fmt(summary.pending_amount),     color: '#FFEBEE', iconColor: '#C62828', dd: { title: 'Unpaid / Partial',  endpoint: '/invoices/',   type: 'unpaid'     } },
+    { icon: TrendingUp,    label: 'Revenue Collected', value: fmt(summary.total_revenue),      color: '#F3E5F5', iconColor: '#6A1B9A', dd: { title: 'Revenue Collected', endpoint: '/invoices/',   type: 'paid'       } },
+    { icon: FileText,      label: 'Quotations',        value: summary.total_quotations ?? '—', color: '#E0F7FA', iconColor: '#00695C', dd: { title: 'All Quotations',    endpoint: '/quotations/', type: 'quotations' } },
   ];
 
   return (
@@ -601,6 +661,8 @@ export default function DashboardPage() {
           }}>{p.label}</button>
         ))}
       </div>
+
+      <QuickPins />
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: 14, marginBottom: 28 }}>

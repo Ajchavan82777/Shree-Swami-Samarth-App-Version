@@ -48,6 +48,72 @@ function printInvoice(invoice, settings) {
   }, 600);
 }
 
+function PackagePicker({ onApply }) {
+  const [packages, setPackages] = useState([]);
+  const [open,     setOpen]     = useState(false);
+  const [pkgId,    setPkgId]    = useState('');
+  const [persons,  setPersons]  = useState(50);
+
+  useEffect(() => {
+    api.get('/packages/').then(r => setPackages(r.data.filter(p => p.active !== false))).catch(() => {});
+  }, []);
+
+  if (!packages.length) return null;
+
+  const selected = packages.find(p => p.id === parseInt(pkgId));
+
+  const handleApply = () => {
+    if (!selected) return;
+    const qty   = Math.max(1, persons);
+    const rate  = parseFloat(selected.price_per_person || 0);
+    const total = qty * rate;
+    const incl  = Array.isArray(selected.inclusions) && selected.inclusions.length
+      ? ` — Incl: ${selected.inclusions.slice(0, 3).join(', ')}${selected.inclusions.length > 3 ? '…' : ''}`
+      : '';
+    onApply([{ description: `${selected.name}${incl}`, qty, rate, total }]);
+    setOpen(false);
+    setPkgId('');
+  };
+
+  return (
+    <div style={{ marginBottom: 12, background: 'rgba(201,168,76,0.07)', borderRadius: 8, border: '1px dashed rgba(201,168,76,0.4)' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#7a6030' }}>
+        <span>📦 Apply from Package (optional)</span>
+        <span style={{ fontSize: 11, opacity: 0.7 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{ padding: '0 14px 14px', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-light)', display: 'block', marginBottom: 4 }}>Select Package</label>
+            <select className="form-select" value={pkgId} onChange={e => {
+              setPkgId(e.target.value);
+              const p = packages.find(p => p.id === parseInt(e.target.value));
+              if (p?.min_persons) setPersons(p.min_persons);
+            }}>
+              <option value="">— Choose a package —</option>
+              {packages.map(p => <option key={p.id} value={p.id}>{p.name} — ₹{p.price_per_person}/person (min {p.min_persons})</option>)}
+            </select>
+          </div>
+          <div style={{ width: 120 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-light)', display: 'block', marginBottom: 4 }}>No. of Persons</label>
+            <input className="form-input" type="number" value={persons} min={selected?.min_persons || 1}
+              onChange={e => setPersons(Math.max(1, parseInt(e.target.value) || 1))} />
+          </div>
+          {selected && (
+            <div style={{ fontSize: 12, color: 'var(--maroon)', alignSelf: 'center', fontWeight: 700 }}>
+              ₹{(persons * parseFloat(selected.price_per_person || 0)).toLocaleString('en-IN')}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, alignSelf: 'flex-end' }}>
+            <button className="btn btn-primary btn-sm" onClick={handleApply} disabled={!pkgId}>✓ Apply</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Invoice Preview Modal ────────────────────────────────────────────────────
 function PreviewModal({ invoice, onClose, company }) {
   const { get } = useContent();
@@ -219,6 +285,13 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
   const addItem    = () => setForm(f=>({...f,items:[...f.items,{description:'',qty:1,rate:0,total:0}]}));
   const removeItem = i  => setForm(f=>({...f,items:f.items.filter((_,idx)=>idx!==i)}));
 
+  const handlePackageApply = (newItems) => {
+    setForm(f => {
+      const hasContent = f.items.some(i => i.description.trim() !== '');
+      return { ...f, items: hasContent ? [...newItems, ...f.items] : newItems };
+    });
+  };
+
   const subtotal = form.items.reduce((s,i)=>s+(parseFloat(i.total)||0),0);
   const taxable  = Math.max(subtotal-(parseFloat(form.discount)||0),0);
   const tax      = form.gst_type==='none' ? 0 : Math.round(taxable*(parseFloat(form.tax_rate)||0)/100*100)/100;
@@ -318,6 +391,7 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
           {/* Line Items */}
           <div className="card" style={{ marginBottom:16, padding:16 }}>
             <p style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--maroon)' }}>Line Items</p>
+            <PackagePicker onApply={handlePackageApply} />
             <div className="inv-items-header">
               {['Description','Qty','Rate (₹)','Total',''].map(h=><div key={h} style={{ fontSize:11, color:'var(--text-light)', textTransform:'uppercase' }}>{h}</div>)}
             </div>
@@ -499,7 +573,8 @@ export default function InvoicesPage() {
     inv.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
     inv.invoice_number?.toLowerCase().includes(search.toLowerCase()) ||
     inv.company_name?.toLowerCase().includes(search.toLowerCase()) ||
-    inv.event_type?.toLowerCase().includes(search.toLowerCase())
+    inv.event_type?.toLowerCase().includes(search.toLowerCase()) ||
+    inv.phone?.toLowerCase().includes(search.toLowerCase())
   );
 
   const totals = { grand: items.reduce((s,i)=>s+parseFloat(i.grand_total||0),0), paid: items.reduce((s,i)=>s+parseFloat(i.advance_paid||0),0), due: items.reduce((s,i)=>s+parseFloat(i.balance_due||0),0) };
@@ -537,7 +612,7 @@ export default function InvoicesPage() {
         ))}
         <div style={{ marginLeft:'auto', position:'relative' }}>
           <Search size={14} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)' }} />
-          <input className="form-input" placeholder="Search invoices..." value={search} onChange={e=>setSearch(e.target.value)}
+          <input className="form-input" placeholder="Search by name, phone, invoice #…" value={search} onChange={e=>setSearch(e.target.value)}
             style={{ paddingLeft:32, width:220, fontSize:13 }} />
         </div>
       </div>

@@ -1,13 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, X, Eye, Trash2, Download, ChevronDown } from 'lucide-react';
+import { Plus, X, Eye, Trash2, Download, ChevronDown, Search } from 'lucide-react';
 import api, { fmt, fmtDate, cap } from '../../utils/api';
 import { downloadCSV, downloadExcel, downloadWordTable, downloadPrintTable } from '../../utils/tableExport';
 
 // ---- SHARED SIMPLE CRUD TABLE (with Export) ----
 function CrudTable({ title, columns, rows, onView, onEdit, onDelete, onCreate, loading, exportFilename }) {
   const [dlOpen, setDlOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const tableRef = useRef(null);
   const fname = exportFilename || title.replace(/\s+/g, '_');
+
+  const filteredRows = search.trim()
+    ? rows.filter(row => columns.some(col => {
+        const v = row[col.key];
+        return v != null && String(v).toLowerCase().includes(search.toLowerCase());
+      }))
+    : rows;
 
   const EXPORT_OPTS = [
     { label: '📄 CSV',        fn: () => downloadCSV(rows, columns, fname) },
@@ -48,14 +56,30 @@ function CrudTable({ title, columns, rows, onView, onEdit, onDelete, onCreate, l
         </div>
       </div>
       <div className="card">
-        {loading ? <div className="loading">Loading...</div> : rows.length === 0 ? (
-          <div className="empty"><div className="empty-icon">📋</div>No records found</div>
+        {!loading && (
+          <div style={{ display:'flex', gap:8, padding:'10px 16px', borderBottom:'1px solid var(--border)', alignItems:'center', flexWrap:'wrap', background:'var(--cream)' }}>
+            <div style={{ position:'relative', flex:1, minWidth:180 }}>
+              <Search size={13} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', pointerEvents:'none' }} />
+              <input className="form-input" style={{ paddingLeft:32, fontSize:13 }}
+                placeholder={`Filter by ${columns.slice(0,3).map(c=>c.label).join(', ').toLowerCase()}…`}
+                value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            {search && (
+              <button className="btn btn-ghost btn-sm" onClick={() => setSearch('')}><X size={12}/> Clear</button>
+            )}
+            <span style={{ fontSize:12, color:'var(--text-light)', whiteSpace:'nowrap' }}>
+              {filteredRows.length}{rows.length !== filteredRows.length ? ` / ${rows.length}` : ''} records
+            </span>
+          </div>
+        )}
+        {loading ? <div className="loading">Loading...</div> : filteredRows.length === 0 ? (
+          <div className="empty"><div className="empty-icon">📋</div>{search ? 'No records match your search.' : 'No records found'}</div>
         ) : (
           <div className="table-wrap" ref={tableRef}>
             <table>
               <thead><tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}<th>Actions</th></tr></thead>
               <tbody>
-                {rows.map((row, i) => (
+                {filteredRows.map((row, i) => (
                   <tr key={row.id || i}>
                     {columns.map(c => <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? '—')}</td>)}
                     <td>
