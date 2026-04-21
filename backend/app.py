@@ -2,7 +2,7 @@
 Shree Swami Samarth Food and Hospitality Services
 Backend API Server
 """
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
@@ -25,6 +25,18 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "sss-demo-secret")
 
 jwt = JWTManager(app)
+
+@jwt.invalid_token_loader
+def invalid_token_cb(reason):
+    return jsonify({"message": "Invalid token"}), 401
+
+@jwt.expired_token_loader
+def expired_token_cb(header, data):
+    return jsonify({"message": "Token expired"}), 401
+
+@jwt.unauthorized_loader
+def missing_token_cb(reason):
+    return jsonify({"message": "Missing token"}), 401
 
 # Import and register blueprints
 from routes.auth import auth_bp

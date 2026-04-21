@@ -8,7 +8,7 @@ inquiries_bp = Blueprint("inquiries", __name__)
 @jwt_required()
 def get_all():
     status = request.args.get("status")
-    is_corporate = request.args.get("corporate")
+    is_corporate = request.args.get("is_corporate")
     items = db["inquiries"]
     if status:
         items = [i for i in items if i["status"] == status]
