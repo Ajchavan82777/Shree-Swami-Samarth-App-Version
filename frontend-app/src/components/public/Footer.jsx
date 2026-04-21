@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Phone, Mail, MapPin, Share2, MessageCircle, Globe } from 'lucide-react';
+import { Phone, Mail, MapPin, Instagram, Facebook, Youtube, MessageCircle, Twitter } from 'lucide-react';
 import { useContent } from '../../context/ContentContext';
 
 export default function Footer() {
@@ -11,6 +11,20 @@ export default function Footer() {
   const desc    = get('footer',  'description', 'Premium catering solutions for corporate offices, weddings, and special events across Mumbai & Maharashtra since 2010. Founded by Devendra Kamble.');
   const copy    = get('footer',  'copyright',   '© 2024 Shree Swami Samarth Food and Hospitality Services. All rights reserved.');
   const tagline = get('company', 'tagline',  'Serving with Love & Hygiene since 2010');
+
+  const whatsapp  = get('social_links', 'whatsapp',  '');
+  const instagram = get('social_links', 'instagram', '');
+  const facebook  = get('social_links', 'facebook',  '');
+  const youtube   = get('social_links', 'youtube',   '');
+  const twitter   = get('social_links', 'twitter',   '');
+
+  const socialLinks = [
+    { href: whatsapp  || `https://wa.me/${phone.replace(/\D/g,'')}`, Icon: MessageCircle, label: 'WhatsApp' },
+    { href: instagram, Icon: Instagram,  label: 'Instagram' },
+    { href: facebook,  Icon: Facebook,   label: 'Facebook' },
+    { href: youtube,   Icon: Youtube,    label: 'YouTube' },
+    { href: twitter,   Icon: Twitter,    label: 'Twitter' },
+  ].filter(s => s.href);
 
   const serviceLinks = [
     ['Corporate Catering', '/corporate-catering'],
@@ -43,15 +57,18 @@ export default function Footer() {
               Food & Hospitality Services
             </p>
             <p style={{ fontSize: 14, lineHeight: 1.7, color: '#A89080' }}>{desc}</p>
-            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              {[Share2, MessageCircle, Globe].map((Icon, i) => (
-                <a key={i} href="#" style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(201,168,76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold)', transition: 'all 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--gold)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(201,168,76,0.15)'}>
-                  <Icon size={16} />
-                </a>
-              ))}
-            </div>
+            {socialLinks.length > 0 && (
+              <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+                {socialLinks.map(({ href, Icon, label }) => (
+                  <a key={label} href={href} target="_blank" rel="noopener noreferrer" title={label}
+                    style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(201,168,76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold)', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--gold)'; e.currentTarget.style.color = 'var(--dark)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.15)'; e.currentTarget.style.color = 'var(--gold)'; }}>
+                    <Icon size={16} />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Services */}

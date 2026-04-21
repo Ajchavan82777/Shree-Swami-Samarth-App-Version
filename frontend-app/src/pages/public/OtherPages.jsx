@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, ArrowRight, Building2, Calendar, Users, Coffee, BookOpen, Package } from 'lucide-react';
+import { CheckCircle, ArrowRight } from 'lucide-react';
 import api from '../../utils/api';
 import { useContent } from '../../context/ContentContext';
 
@@ -27,10 +27,16 @@ const DEFAULT_VALUES = [
 
 export function AboutPage() {
   const { get, getJson } = useContent();
-  const story   = get('about', 'story',   'Founded in 2010 by Devendra Kamble in Vikhroli, Mumbai, Shree Swami Samarth Food and Hospitality Services has grown into a trusted name for corporate offices, weddings, and events across Maharashtra.');
-  const founder = get('about', 'founder', 'Devendra Kamble');
-  const location = get('about', 'location', 'Vikhroli, Mumbai');
-  const values  = getJson('about', 'values', DEFAULT_VALUES);
+  const heroTitle  = get('about', 'hero_title',       'About Us');
+  const heroSub    = get('about', 'hero_subtitle',    'Our Story');
+  const heroDesc   = get('about', 'hero_description', 'Serving authentic, hygienic, and premium catering services since 2010');
+  const whoLabel   = get('about', 'who_label',        'Who We Are');
+  const whoHeading = get('about', 'who_heading',      'Passionate About Food & Hospitality');
+  const valuesHdr  = get('about', 'values_heading',   'Our Core Values');
+  const story      = get('about', 'story',   'Founded in 2010 by Devendra Kamble in Vikhroli, Mumbai, Shree Swami Samarth Food and Hospitality Services has grown into a trusted name for corporate offices, weddings, and events across Maharashtra.');
+  const founder    = get('about', 'founder', 'Devendra Kamble');
+  const location   = get('about', 'location', 'Vikhroli, Mumbai');
+  const values     = getJson('about', 'values', DEFAULT_VALUES);
 
   const stat_e = get('hero', 'stat_events', '5000+');
   const stat_c = get('hero', 'stat_clients', '500+');
@@ -38,12 +44,12 @@ export function AboutPage() {
 
   return (
     <div>
-      <PageHero title="About Us" subtitle="Our Story" desc="Serving authentic, hygienic, and premium catering services since 2010" />
+      <PageHero title={heroTitle} subtitle={heroSub} desc={heroDesc} />
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
         <div className="corp-grid" style={{ marginBottom: 60 }}>
           <div>
-            <p className="section-title">Who We Are</p>
-            <h2 className="section-heading" style={{ marginBottom: 20 }}>Passionate About Food &amp; Hospitality</h2>
+            <p className="section-title">{whoLabel}</p>
+            <h2 className="section-heading" style={{ marginBottom: 20 }}>{whoHeading}</h2>
             <p style={{ color: 'var(--text-light)', lineHeight: 1.8, marginBottom: 16 }}>
               {story.split('\n').map((line, i) => <span key={i}>{line}<br /></span>)}
             </p>
@@ -57,7 +63,7 @@ export function AboutPage() {
             </div>
           </div>
           <div style={{ background: 'var(--cream-dark)', borderRadius: 18, padding: 40, border: '1px solid var(--border)' }}>
-            <h3 style={{ marginBottom: 20, fontSize: 22 }}>Our Core Values</h3>
+            <h3 style={{ marginBottom: 20, fontSize: 22 }}>{valuesHdr}</h3>
             {values.map((v, i) => (
               <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{v.icon}</span>
@@ -75,18 +81,26 @@ export function AboutPage() {
 }
 
 // ---- CORPORATE CATERING PAGE ----
-const CORP_SERVICES = [
-  { icon: Calendar,   title: 'Daily Office Meal Plans',  desc: 'Nutritious and tasty breakfast, lunch and dinner for your team, every working day.' },
-  { icon: Users,      title: 'Executive Lunch Service',  desc: 'Premium multi-course lunches for leadership teams, board meetings and VIP guests.' },
-  { icon: Package,    title: 'Office Buffet Catering',   desc: 'Lavish buffets for team celebrations, product launches, and year-end parties.' },
-  { icon: BookOpen,   title: 'Conference & Training',    desc: 'Full-day catering for conferences, workshops, seminars and training programs.' },
-  { icon: Coffee,     title: 'Pantry & Snack Service',   desc: 'Healthy morning and evening snacks, tea, coffee and fresh juices for your office.' },
-  { icon: Building2,  title: 'Bulk Meal Service',        desc: 'Large-scale meal service for factories, construction sites and large workforces.' },
+const DEFAULT_CORP_CARDS = [
+  { icon: '📅', title: 'Daily Office Meal Plans',  desc: 'Nutritious and tasty breakfast, lunch and dinner for your team, every working day.' },
+  { icon: '👥', title: 'Executive Lunch Service',  desc: 'Premium multi-course lunches for leadership teams, board meetings and VIP guests.' },
+  { icon: '📦', title: 'Office Buffet Catering',   desc: 'Lavish buffets for team celebrations, product launches, and year-end parties.' },
+  { icon: '📚', title: 'Conference & Training',    desc: 'Full-day catering for conferences, workshops, seminars and training programs.' },
+  { icon: '☕', title: 'Pantry & Snack Service',   desc: 'Healthy morning and evening snacks, tea, coffee and fresh juices for your office.' },
+  { icon: '🏗️', title: 'Bulk Meal Service',        desc: 'Large-scale meal service for factories, construction sites and large workforces.' },
 ];
 
 export function CorporateCateringPage() {
-  const { getJson } = useContent();
-  const benefits = getJson('corporate', 'benefits', [
+  const { get, getJson } = useContent();
+  const heroSub  = get('corporate', 'hero_subtitle',    'For Businesses & Offices');
+  const heroTitle = get('corporate', 'hero_title',      'Corporate Catering');
+  const heroDesc  = get('corporate', 'hero_description','Reliable, hygienic, professional catering solutions for offices of all sizes');
+  const heroCta   = get('corporate', 'hero_cta',        'Get Corporate Quote');
+  const secTitle  = get('corporate', 'section_title',   'Corporate Catering Solutions');
+  const secDesc   = get('corporate', 'section_desc',    'Everything your office needs, delivered with precision and warmth');
+  const whyTitle  = get('corporate', 'why_title',       'Why Companies Choose Us');
+  const cards     = getJson('corporate', 'cards',    DEFAULT_CORP_CARDS);
+  const benefits  = getJson('corporate', 'benefits', [
     'Timely delivery — always', 'FSSAI compliant kitchen', 'Monthly GST-ready invoices',
     'Dedicated account manager', 'Custom menu planning', 'Diet-inclusive options',
     'Scalable to any team size', 'Festive special meal plans',
@@ -96,35 +110,33 @@ export function CorporateCateringPage() {
     <div>
       <PageHero
         bg="linear-gradient(135deg, #1A2A4A 0%, #0D1B2A 100%)"
-        subtitle="For Businesses & Offices" subtitleColor="#90CAF9"
-        title="Corporate Catering"
-        desc="Reliable, hygienic, professional catering solutions for offices of all sizes" descColor="#90CAF9"
+        subtitle={heroSub} subtitleColor="#90CAF9"
+        title={heroTitle}
+        desc={heroDesc} descColor="#90CAF9"
       >
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/request-quote" className="btn btn-primary">Get Corporate Quote</Link>
+          <Link to="/request-quote" className="btn btn-primary">{heroCta}</Link>
           <Link to="/contact" className="btn" style={{ background: 'transparent', border: '2px solid rgba(255,255,255,0.3)', color: 'white' }}>Talk to Us</Link>
         </div>
       </PageHero>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h2 className="section-heading">Corporate Catering Solutions</h2>
-          <p className="section-sub" style={{ margin: '12px auto 0' }}>Everything your office needs, delivered with precision and warmth</p>
+          <h2 className="section-heading">{secTitle}</h2>
+          <p className="section-sub" style={{ margin: '12px auto 0' }}>{secDesc}</p>
         </div>
         <div className="auto-grid" style={{ marginBottom: 60 }}>
-          {CORP_SERVICES.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="card">
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#E8EAF6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                <Icon size={22} style={{ color: '#283593' }} />
-              </div>
-              <h3 style={{ fontSize: 18, marginBottom: 8 }}>{title}</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-light)', lineHeight: 1.6 }}>{desc}</p>
+          {cards.map((card, i) => (
+            <div key={i} className="card">
+              <div style={{ fontSize: 36, marginBottom: 16 }}>{card.icon}</div>
+              <h3 style={{ fontSize: 18, marginBottom: 8 }}>{card.title}</h3>
+              <p style={{ fontSize: 14, color: 'var(--text-light)', lineHeight: 1.6 }}>{card.desc}</p>
             </div>
           ))}
         </div>
 
         <div style={{ background: 'var(--dark)', borderRadius: 18, padding: 48, color: 'white' }}>
-          <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, color: 'var(--gold)', marginBottom: 28, textAlign: 'center' }}>Why Companies Choose Us</h3>
+          <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, color: 'var(--gold)', marginBottom: 28, textAlign: 'center' }}>{whyTitle}</h3>
           <div className="auto-grid-sm">
             {benefits.map((b, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -344,21 +356,34 @@ export function ServicesPage() {
   );
 }
 
+const DEFAULT_WEDDING_SERVICES = [
+  'Haldi & Mehendi Catering', 'Sangeet Evening Snacks', 'Reception Grand Buffet',
+  'Live Counters (Dosa, Chat, Pasta)', 'Traditional Thali Service',
+  'Cocktail & Welcome Drinks', 'Varmala Ceremony Refreshments', 'Post-Wedding Lunch',
+];
+
 export function WeddingCateringPage() {
+  const { get, getJson } = useContent();
+  const heroSub  = get('wedding', 'hero_subtitle',    'For Your Special Day');
+  const heroTitle = get('wedding', 'hero_title',      'Wedding Catering');
+  const heroDesc  = get('wedding', 'hero_description','Unforgettable wedding feasts crafted with love, tradition, and culinary excellence');
+  const heroCta   = get('wedding', 'hero_cta',        'Plan Your Wedding Menu');
+  const services  = getJson('wedding', 'services',    DEFAULT_WEDDING_SERVICES);
+
   return (
     <div>
       <PageHero
         bg="linear-gradient(135deg, #4A0018 0%, #2D000E 100%)"
-        subtitle="For Your Special Day" subtitleColor="#F48FB1"
-        title="Wedding Catering"
-        desc="Unforgettable wedding feasts crafted with love, tradition, and culinary excellence" descColor="#F48FB1"
+        subtitle={heroSub} subtitleColor="#F48FB1"
+        title={heroTitle}
+        desc={heroDesc} descColor="#F48FB1"
       >
-        <Link to="/request-quote" className="btn btn-primary">Plan Your Wedding Menu</Link>
+        <Link to="/request-quote" className="btn btn-primary">{heroCta}</Link>
       </PageHero>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
         <div className="auto-grid">
-          {['Haldi & Mehendi Catering','Sangeet Evening Snacks','Reception Grand Buffet','Live Counters (Dosa, Chat, Pasta)','Traditional Thali Service','Cocktail & Welcome Drinks','Varmala Ceremony Refreshments','Post-Wedding Lunch'].map(s => (
-            <div key={s} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '16px 20px', background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)' }}>
+          {services.map((s, i) => (
+            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '16px 20px', background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)' }}>
               <CheckCircle size={18} style={{ color: 'var(--gold)', flexShrink: 0 }} />
               <span style={{ fontSize: 15 }}>{s}</span>
             </div>
@@ -373,22 +398,39 @@ export function WeddingCateringPage() {
   );
 }
 
+const DEFAULT_EVENT_TYPES = [
+  { icon: '🎂', title: 'Birthday Parties' },
+  { icon: '💑', title: 'Anniversary Celebrations' },
+  { icon: '🪔', title: 'Festive Get-Togethers' },
+  { icon: '🎭', title: 'Cultural Events' },
+  { icon: '⚽', title: 'Sports Events' },
+  { icon: '🎓', title: 'Alumni Meets' },
+  { icon: '👋', title: 'Farewell Parties' },
+  { icon: '🕉️', title: 'Pooja & Religious Events' },
+];
+
 export function EventCateringPage() {
+  const { get, getJson } = useContent();
+  const heroTitle = get('events', 'hero_title',       'Event Catering');
+  const heroDesc  = get('events', 'hero_description', 'Every celebration deserves extraordinary food and flawless service');
+  const heroCta   = get('events', 'hero_cta',         'Book for Your Event');
+  const types     = getJson('events', 'types',         DEFAULT_EVENT_TYPES);
+
   return (
     <div>
       <PageHero
         bg="linear-gradient(135deg, #1B3A1B 0%, #0D200D 100%)"
-        title="Event Catering"
-        desc="Every celebration deserves extraordinary food and flawless service" descColor="#A5D6A7"
+        title={heroTitle}
+        desc={heroDesc} descColor="#A5D6A7"
       >
-        <Link to="/request-quote" className="btn btn-primary">Book for Your Event</Link>
+        <Link to="/request-quote" className="btn btn-primary">{heroCta}</Link>
       </PageHero>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
         <div className="auto-grid">
-          {['Birthday Parties','Anniversary Celebrations','Festive Get-Togethers','Cultural Events','Sports Events','Alumni Meets','Farewell Parties','Pooja & Religious Events'].map(e => (
-            <div key={e} className="card" style={{ textAlign: 'center', padding: '28px 20px' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>🎉</div>
-              <h4 style={{ fontSize: 16 }}>{e}</h4>
+          {types.map((e, i) => (
+            <div key={i} className="card" style={{ textAlign: 'center', padding: '28px 20px' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>{e.icon || '🎉'}</div>
+              <h4 style={{ fontSize: 16 }}>{e.title || e}</h4>
             </div>
           ))}
         </div>

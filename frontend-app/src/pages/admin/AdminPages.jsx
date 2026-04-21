@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, X, Eye, Trash2, Download, ChevronDown, Search } from 'lucide-react';
 import api, { fmt, fmtDate, cap } from '../../utils/api';
+import { TEMPLATES, THEMES, FONTS } from '../../components/admin/InvoiceTemplates';
 import { downloadCSV, downloadExcel, downloadWordTable, downloadPrintTable } from '../../utils/tableExport';
 
 // ---- SHARED SIMPLE CRUD TABLE (with Export) ----
@@ -587,7 +588,73 @@ export function ReportsPage() {
 }
 
 // ---- SETTINGS PAGE ----
+function loadInvDefaults() {
+  try { return JSON.parse(localStorage.getItem('sss_invoice_defaults') || '{}'); } catch { return {}; }
+}
+
+const DEFAULT_EVENT_TYPES = [
+  'Wedding','Reception','Corporate Lunch','Corporate Dinner','Daily Meal Plan',
+  'Conference Buffet','Birthday Party','Anniversary','Cocktail Party',
+  'Baby Shower','Engagement','Farewell','Award Ceremony','Product Launch',
+  'Team Outing','Festival Event','Pooja / Religious Event','Other',
+];
+function loadEventTypes() {
+  try {
+    const s = JSON.parse(localStorage.getItem('sss_event_types') || 'null');
+    return Array.isArray(s) && s.length ? s : [...DEFAULT_EVENT_TYPES];
+  } catch { return [...DEFAULT_EVENT_TYPES]; }
+}
+
 export function SettingsPage() {
+  const saved = loadInvDefaults();
+  const [invDef, setInvDef] = useState({
+    template:    saved.template    || (TEMPLATES[0]?.id || 't01'),
+    theme:       saved.theme       || 'Gold & Maroon',
+    font:        saved.font        || 'Inter',
+    orientation: saved.orientation || 'portrait',
+    margins:     saved.margins     || { top: 0, right: 0, bottom: 0, left: 0 },
+  });
+  const [saved2, setSaved2] = useState(false);
+
+  const [eventTypes, setEventTypes] = useState(loadEventTypes);
+  const [newET,      setNewET]      = useState('');
+  const [etSaved,    setEtSaved]    = useState(false);
+  const [editingET,  setEditingET]  = useState(null); // index being edited
+  const [editETVal,  setEditETVal]  = useState('');
+
+  const saveEventTypes = (list) => {
+    localStorage.setItem('sss_event_types', JSON.stringify(list));
+    setEventTypes(list);
+    setEtSaved(true);
+    setTimeout(() => setEtSaved(false), 2000);
+  };
+  const addET = () => {
+    const v = newET.trim();
+    if (!v || eventTypes.includes(v)) return;
+    saveEventTypes([...eventTypes, v]);
+    setNewET('');
+  };
+  const deleteET = (i) => saveEventTypes(eventTypes.filter((_, idx) => idx !== i));
+  const startEditET = (i) => { setEditingET(i); setEditETVal(eventTypes[i]); };
+  const saveEditET  = (i) => {
+    const v = editETVal.trim();
+    if (!v) return;
+    const updated = [...eventTypes];
+    updated[i] = v;
+    saveEventTypes(updated);
+    setEditingET(null);
+  };
+  const resetToDefaults = () => { if (confirm('Reset event types to default list?')) saveEventTypes([...DEFAULT_EVENT_TYPES]); };
+
+  const setDef = (k, v) => setInvDef(d => ({ ...d, [k]: v }));
+  const setMargin = (side, v) => setInvDef(d => ({ ...d, margins: { ...d.margins, [side]: parseFloat(v) || 0 } }));
+
+  const handleSaveDefaults = () => {
+    localStorage.setItem('sss_invoice_defaults', JSON.stringify(invDef));
+    setSaved2(true);
+    setTimeout(() => setSaved2(false), 2000);
+  };
+
   return (
     <div>
       <div className="page-header"><h1 className="page-title">Settings</h1></div>
@@ -609,6 +676,88 @@ export function SettingsPage() {
             <p style={{ fontSize: 13, color: '#3949AB' }}>Email: admin@shreeswamisamarthfoods.demo</p>
             <p style={{ fontSize: 13, color: '#3949AB' }}>Password: Admin@123</p>
           </div>
+        </div>
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+            <h3 style={{ fontSize: 18, margin: 0 }}>Event Types</h3>
+            <button onClick={resetToDefaults} style={{ fontSize: 12, color: 'var(--text-light)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Reset to defaults</button>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 16 }}>These event types appear as suggestions in the Invoice &amp; Quotation forms. {etSaved && <span style={{ color: 'var(--success)', fontWeight: 600 }}>✓ Saved</span>}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {eventTypes.map((et, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: 20, padding: '4px 12px', fontSize: 13 }}>
+                {editingET === i ? (
+                  <>
+                    <input value={editETVal} onChange={e => setEditETVal(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveEditET(i); if (e.key === 'Escape') setEditingET(null); }}
+                      autoFocus
+                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13, width: Math.max(60, editETVal.length * 8) }} />
+                    <button onClick={() => saveEditET(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--success)', fontWeight: 700, fontSize: 14, padding: '0 2px' }}>✓</button>
+                    <button onClick={() => setEditingET(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: 14, padding: '0 2px' }}>✕</button>
+                  </>
+                ) : (
+                  <>
+                    <span onClick={() => startEditET(i)} style={{ cursor: 'pointer' }} title="Click to edit">{et}</span>
+                    <button onClick={() => deleteET(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>✕</button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, maxWidth: 400 }}>
+            <input className="form-input" value={newET} onChange={e => setNewET(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addET()}
+              placeholder="Add new event type…" style={{ flex: 1, fontSize: 13 }} />
+            <button className="btn btn-primary btn-sm" onClick={addET} disabled={!newET.trim()}>+ Add</button>
+          </div>
+        </div>
+
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <h3 style={{ fontSize: 18, marginBottom: 6 }}>Invoice &amp; Quotation Defaults</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20 }}>These defaults pre-fill every new Invoice and Quotation so users don't have to pick settings each time.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16, marginBottom: 20 }}>
+            <div className="form-group">
+              <label className="form-label">Default Template</label>
+              <select className="form-select" value={invDef.template} onChange={e => setDef('template', e.target.value)}>
+                {TEMPLATES.map(tp => <option key={tp.id} value={tp.id}>{tp.icon} {tp.name}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Default Color Theme</label>
+              <select className="form-select" value={invDef.theme} onChange={e => setDef('theme', e.target.value)}>
+                {Object.keys(THEMES).map(k => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Default Font</label>
+              <select className="form-select" value={invDef.font} onChange={e => setDef('font', e.target.value)}>
+                {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Default Page Orientation</label>
+              <select className="form-select" value={invDef.orientation} onChange={e => setDef('orientation', e.target.value)}>
+                <option value="portrait">⬜ Portrait (A4 vertical)</option>
+                <option value="landscape">▭ Landscape (A4 horizontal)</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Default Page Margins (mm)</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, maxWidth: 400 }}>
+              {['top','right','bottom','left'].map(side => (
+                <div key={side}>
+                  <label style={{ fontSize: 11, color: 'var(--text-light)', display: 'block', marginBottom: 4, textTransform: 'capitalize' }}>{side}</label>
+                  <input className="form-input" type="number" min="0" max="40" value={invDef.margins[side]}
+                    onChange={e => setMargin(side, e.target.value)} style={{ padding: '8px 10px' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={handleSaveDefaults}>
+            {saved2 ? '✓ Saved!' : 'Save Invoice Defaults'}
+          </button>
+          {saved2 && <span style={{ marginLeft: 12, fontSize: 13, color: 'var(--success)' }}>Defaults saved — new invoices and quotations will use these settings.</span>}
         </div>
       </div>
     </div>

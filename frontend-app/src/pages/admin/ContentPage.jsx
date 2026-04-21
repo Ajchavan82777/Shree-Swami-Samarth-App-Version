@@ -54,11 +54,17 @@ const SECTIONS = [
   {
     id: 'about', label: 'About Page', icon: 'ℹ️',
     fields: [
-      { key: 'story',       label: 'Company Story',     type: 'textarea' },
-      { key: 'founded_year',label: 'Founded Year',      type: 'text' },
-      { key: 'founder',     label: 'Founder Name',      type: 'text' },
-      { key: 'location',    label: 'Location',          type: 'text' },
-      { key: 'mission',     label: 'Mission Statement', type: 'textarea' },
+      { key: 'hero_title',       label: 'Page Title',                  type: 'text',     hint: 'About Us' },
+      { key: 'hero_subtitle',    label: 'Page Subtitle (above title)', type: 'text',     hint: 'Our Story' },
+      { key: 'hero_description', label: 'Page Hero Description',       type: 'textarea', hint: 'Serving authentic, hygienic...' },
+      { key: 'who_label',        label: '"Who We Are" Section Label',  type: 'text',     hint: 'Who We Are' },
+      { key: 'who_heading',      label: '"Who We Are" Heading',        type: 'text',     hint: 'Passionate About Food & Hospitality' },
+      { key: 'values_heading',   label: 'Values Box Heading',          type: 'text',     hint: 'Our Core Values' },
+      { key: 'story',            label: 'Company Story',               type: 'textarea' },
+      { key: 'founded_year',     label: 'Founded Year',                type: 'text' },
+      { key: 'founder',          label: 'Founder Name',                type: 'text' },
+      { key: 'location',         label: 'Location',                    type: 'text' },
+      { key: 'mission',          label: 'Mission Statement',           type: 'textarea' },
       {
         key: 'values', label: 'Core Values', type: 'array',
         itemSchema: [
@@ -104,19 +110,32 @@ const SECTIONS = [
     }]
   },
   {
-    id: 'corporate', label: 'Corporate', icon: '💼',
+    id: 'corporate', label: 'Corporate Page', icon: '💼',
     fields: [
+      { key: 'hero_subtitle',    label: 'Page Subtitle',               type: 'text',     hint: 'For Businesses & Offices' },
+      { key: 'hero_title',       label: 'Page Title',                  type: 'text',     hint: 'Corporate Catering' },
+      { key: 'hero_description', label: 'Page Description',            type: 'textarea' },
+      { key: 'hero_cta',         label: 'Primary CTA Button Text',     type: 'text',     hint: 'Get Corporate Quote' },
+      { key: 'section_title',    label: 'Services Section Heading',    type: 'text',     hint: 'Corporate Catering Solutions' },
+      { key: 'section_desc',     label: 'Services Section Description',type: 'textarea', hint: 'Everything your office needs...' },
+      { key: 'why_title',        label: '"Why Us" Box Heading',        type: 'text',     hint: 'Why Companies Choose Us' },
       {
-        key: 'pricing', label: 'Pricing Plans', type: 'array',
+        key: 'cards', label: 'Service Cards', type: 'array',
+        itemSchema: [
+          { key: 'icon',  label: 'Icon (emoji)',  type: 'text',     hint: '📅' },
+          { key: 'title', label: 'Service Title', type: 'text' },
+          { key: 'desc',  label: 'Description',   type: 'textarea' },
+        ]
+      },
+      {
+        key: 'pricing', label: 'Pricing Plans (Homepage)', type: 'array',
         itemSchema: [
           { key: 'plan',  label: 'Plan Name', type: 'text' },
           { key: 'price', label: 'Price',     type: 'text', hint: '₹150' },
           { key: 'unit',  label: 'Unit',      type: 'text', hint: '/person/day' },
         ]
       },
-      {
-        key: 'benefits', label: 'Benefits List (one per item)', type: 'array-strings',
-      },
+      { key: 'benefits', label: 'Benefits List (Homepage & Corporate Page)', type: 'array-strings' },
     ]
   },
   {
@@ -146,6 +165,63 @@ const SECTIONS = [
     fields: [
       { key: 'description', label: 'Footer Description', type: 'textarea' },
       { key: 'copyright',   label: 'Copyright Text',     type: 'text' },
+    ]
+  },
+  {
+    id: 'social_links', label: 'Social Media Links', icon: '📱',
+    fields: [
+      { key: 'whatsapp',  label: 'WhatsApp Link',  type: 'text', hint: 'https://wa.me/919876543210' },
+      { key: 'instagram', label: 'Instagram URL',  type: 'text', hint: 'https://instagram.com/yourpage' },
+      { key: 'facebook',  label: 'Facebook URL',   type: 'text', hint: 'https://facebook.com/yourpage' },
+      { key: 'youtube',   label: 'YouTube URL',    type: 'text', hint: 'https://youtube.com/yourchannel' },
+      { key: 'twitter',   label: 'Twitter/X URL',  type: 'text', hint: 'https://twitter.com/yourhandle' },
+    ]
+  },
+  {
+    id: 'wedding', label: 'Wedding Page', icon: '💍',
+    fields: [
+      { key: 'hero_subtitle',    label: 'Page Subtitle (above title)', type: 'text',     hint: 'For Your Special Day' },
+      { key: 'hero_title',       label: 'Page Title',                  type: 'text',     hint: 'Wedding Catering' },
+      { key: 'hero_description', label: 'Page Description',            type: 'textarea' },
+      { key: 'hero_cta',         label: 'Hero CTA Button Text',        type: 'text',     hint: 'Plan Your Wedding Menu' },
+      { key: 'services',         label: 'Wedding Service Items (one per line)', type: 'array-strings' },
+    ]
+  },
+  {
+    id: 'events', label: 'Events Page', icon: '🎉',
+    fields: [
+      { key: 'hero_title',       label: 'Page Title',       type: 'text',     hint: 'Event Catering' },
+      { key: 'hero_description', label: 'Page Description', type: 'textarea' },
+      { key: 'hero_cta',         label: 'Hero CTA Button',  type: 'text',     hint: 'Book for Your Event' },
+      {
+        key: 'types', label: 'Event Type Cards', type: 'array',
+        itemSchema: [
+          { key: 'icon',  label: 'Icon (emoji)', type: 'text', hint: '🎂' },
+          { key: 'title', label: 'Event Type',   type: 'text' },
+        ]
+      },
+    ]
+  },
+  {
+    id: 'homepage_text', label: 'Homepage Headings', icon: '📝',
+    fields: [
+      { key: 'services_label',     label: 'Services — Section Label',      type: 'text',     hint: 'What We Offer' },
+      { key: 'services_title',     label: 'Services — Section Heading',    type: 'text',     hint: 'Our Catering Services' },
+      { key: 'services_desc',      label: 'Services — Description',        type: 'textarea' },
+      { key: 'corp_label',         label: 'Corporate Block — Label',       type: 'text',     hint: 'For Businesses' },
+      { key: 'corp_title',         label: 'Corporate Block — Heading',     type: 'text',     hint: 'Corporate Catering You Can Rely On' },
+      { key: 'corp_desc',          label: 'Corporate Block — Description', type: 'textarea' },
+      { key: 'whyus_label',        label: 'Why Us — Section Label',        type: 'text',     hint: 'Our Commitment' },
+      { key: 'whyus_title',        label: 'Why Us — Section Heading',      type: 'text',     hint: 'Why Choose Us?' },
+      { key: 'packages_label',     label: 'Packages — Section Label',      type: 'text',     hint: 'Popular Packages' },
+      { key: 'packages_title',     label: 'Packages — Section Heading',    type: 'text',     hint: 'Menu Packages' },
+      { key: 'steps_label',        label: 'How to Book — Section Label',   type: 'text',     hint: 'Simple Process' },
+      { key: 'steps_title',        label: 'How to Book — Section Heading', type: 'text',     hint: 'How to Book Us' },
+      { key: 'testimonials_label', label: 'Testimonials — Section Label',  type: 'text',     hint: 'What Clients Say' },
+      { key: 'testimonials_title', label: 'Testimonials — Heading',        type: 'text',     hint: 'Testimonials' },
+      { key: 'cta_title',          label: 'CTA Banner — Heading',          type: 'text',     hint: 'Ready to Plan Your Event?' },
+      { key: 'cta_desc',           label: 'CTA Banner — Description',      type: 'textarea', hint: 'Get a customized quote within 24 hours.' },
+      { key: 'cta_btn',            label: 'CTA Banner — Button Text',      type: 'text',     hint: 'Request Free Quote' },
     ]
   },
 ];

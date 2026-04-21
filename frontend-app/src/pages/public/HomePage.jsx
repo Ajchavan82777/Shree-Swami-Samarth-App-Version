@@ -58,6 +58,8 @@ export default function HomePage() {
 
   const phone = get('contact', 'phone', '+91 98765 43210');
 
+  const ht = (key, fb) => get('homepage_text', key, fb);
+
   const stats = [
     [get('hero','stat_events','5000+'), get('hero','stat_events_label','Events Served')],
     [get('hero','stat_clients','500+'), get('hero','stat_clients_label','Happy Clients')],
@@ -112,9 +114,9 @@ export default function HomePage() {
       {/* ── Services ─────────────────────────────────────── */}
       <section className="section-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <p className="section-title">What We Offer</p>
-          <h2 className="section-heading" style={{ margin: '0 auto' }}>Our Catering Services</h2>
-          <p className="section-sub" style={{ margin: '12px auto 0' }}>From intimate gatherings to large corporate events, we cater to every occasion with the same passion and precision.</p>
+          <p className="section-title">{ht('services_label', 'What We Offer')}</p>
+          <h2 className="section-heading" style={{ margin: '0 auto' }}>{ht('services_title', 'Our Catering Services')}</h2>
+          <p className="section-sub" style={{ margin: '12px auto 0' }}>{ht('services_desc', 'From intimate gatherings to large corporate events, we cater to every occasion with the same passion and precision.')}</p>
         </div>
         <div className="auto-grid">
           {services.map((svc, i) => (
@@ -136,12 +138,12 @@ export default function HomePage() {
       <section style={{ background: 'linear-gradient(135deg, var(--dark) 0%, var(--dark-2) 100%)' }} className="section-pad">
         <div className="corp-grid" style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div>
-            <p style={{ fontSize: 12, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 14 }}>For Businesses</p>
+            <p style={{ fontSize: 12, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 14 }}>{ht('corp_label', 'For Businesses')}</p>
             <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(26px,4vw,38px)', color: 'var(--white)', marginBottom: 20, lineHeight: 1.3 }}>
-              Corporate Catering <br />You Can Rely On
+              {ht('corp_title', 'Corporate Catering You Can Rely On')}
             </h2>
             <p style={{ color: '#A89080', lineHeight: 1.8, marginBottom: 28, fontSize: 15 }}>
-              Daily office meals, executive lunches, conference catering, and bulk employee meal service — all managed with professionalism, hygiene, and consistent quality.
+              {ht('corp_desc', 'Daily office meals, executive lunches, conference catering, and bulk employee meal service — all managed with professionalism, hygiene, and consistent quality.')}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
               {benefits.slice(0, 5).map((point, i) => (
@@ -170,8 +172,8 @@ export default function HomePage() {
       <section className="section-pad" style={{ background: 'var(--cream-dark)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <p className="section-title">Our Commitment</p>
-            <h2 className="section-heading">Why Choose Us?</h2>
+            <p className="section-title">{ht('whyus_label', 'Our Commitment')}</p>
+            <h2 className="section-heading">{ht('whyus_title', 'Why Choose Us?')}</h2>
           </div>
           <div className="auto-grid-sm">
             {whyItems.map((item, i) => (
@@ -189,8 +191,8 @@ export default function HomePage() {
       {packages.length > 0 && (
         <section className="section-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <p className="section-title">Popular Packages</p>
-            <h2 className="section-heading">Menu Packages</h2>
+            <p className="section-title">{ht('packages_label', 'Popular Packages')}</p>
+            <h2 className="section-heading">{ht('packages_title', 'Menu Packages')}</h2>
           </div>
           <div className="auto-grid">
             {packages.map(pkg => (
@@ -227,8 +229,8 @@ export default function HomePage() {
       {/* ── How it Works ─────────────────────────────────── */}
       <section className="section-pad" style={{ background: 'var(--cream-dark)' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
-          <p className="section-title">Simple Process</p>
-          <h2 className="section-heading" style={{ marginBottom: 48 }}>How to Book Us</h2>
+          <p className="section-title">{ht('steps_label', 'Simple Process')}</p>
+          <h2 className="section-heading" style={{ marginBottom: 48 }}>{ht('steps_title', 'How to Book Us')}</h2>
           <div className="steps-grid">
             {steps.map((step, i) => (
               <div key={i}>
@@ -247,8 +249,8 @@ export default function HomePage() {
       {testimonials.length > 0 && (
         <section className="section-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <p className="section-title">What Clients Say</p>
-            <h2 className="section-heading">Testimonials</h2>
+            <p className="section-title">{ht('testimonials_label', 'What Clients Say')}</p>
+            <h2 className="section-heading">{ht('testimonials_title', 'Testimonials')}</h2>
           </div>
           <div className="auto-grid">
             {testimonials.map(t => (
@@ -277,13 +279,13 @@ export default function HomePage() {
       {/* ── CTA Banner ───────────────────────────────────── */}
       <section className="section-pad-sm" style={{ background: 'linear-gradient(135deg, var(--maroon) 0%, #5C1010 100%)', textAlign: 'center' }}>
         <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(24px,4vw,36px)', color: 'var(--white)', marginBottom: 14 }}>
-          Ready to Plan Your Event?
+          {ht('cta_title', 'Ready to Plan Your Event?')}
         </h2>
         <p style={{ color: '#F0C0C0', fontSize: 16, marginBottom: 32 }}>
-          Get a customized quote within 24 hours. No commitment required.
+          {ht('cta_desc', 'Get a customized quote within 24 hours. No commitment required.')}
         </p>
         <div className="hero-btns">
-          <Link to="/request-quote" className="btn btn-primary hero-btn" style={{ fontSize: 16 }}>Request Free Quote</Link>
+          <Link to="/request-quote" className="btn btn-primary hero-btn" style={{ fontSize: 16 }}>{ht('cta_btn', 'Request Free Quote')}</Link>
           <a href={`tel:${phone.replace(/\s/g,'')}`} className="btn hero-btn" style={{ background: 'transparent', border: '2px solid rgba(255,255,255,0.4)', color: 'white', fontSize: 16 }}>
             <Phone size={16} /> {phone}
           </a>

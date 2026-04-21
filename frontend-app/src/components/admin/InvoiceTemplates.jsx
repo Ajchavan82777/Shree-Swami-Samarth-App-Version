@@ -1363,12 +1363,14 @@ const MAP = {
 // ─── MASTER RENDERER ─────────────────────────────────────────────────────────
 export function InvoicePreview({
   invoice,
-  template   = 't01',
-  themeName  = 'Gold & Maroon',
-  font       = 'Inter',
-  logo       = '',
-  gstType    = 'sgst_cgst',
-  company    = {},
+  template    = 't01',
+  themeName   = 'Gold & Maroon',
+  font        = 'Inter',
+  logo        = '',
+  gstType     = 'sgst_cgst',
+  company     = {},
+  orientation = 'portrait',
+  margins     = { top: 0, right: 0, bottom: 0, left: 0 },
 }) {
   const cfg = TEMPLATES.find(tp => tp.id === template) || TEMPLATES[0];
   const t   = THEMES[themeName] || THEMES['Gold & Maroon'];
@@ -1382,11 +1384,24 @@ export function InvoicePreview({
     gstin:   '27XXXXX1234X1Z5',
     ...company,
   };
-  return <Cmp inv={invoice} t={t} font={font} logo={logo} gstType={gstType} company={co} v={cfg.v || 1} />;
+  // A4 portrait ≈ 1160px, landscape ≈ 580px at the 820px preview container width
+  const minH = orientation === 'landscape' ? 580 : 1160;
+  const mmPx = 3.78; // 1 mm in px at 96 dpi
+  const pad  = {
+    paddingTop:    (margins.top    || 0) * mmPx,
+    paddingRight:  (margins.right  || 0) * mmPx,
+    paddingBottom: (margins.bottom || 0) * mmPx,
+    paddingLeft:   (margins.left   || 0) * mmPx,
+  };
+  return (
+    <div style={{ minHeight: minH, display: 'flex', flexDirection: 'column', ...pad }}>
+      <Cmp inv={invoice} t={t} font={font} logo={logo} gstType={gstType} company={co} v={cfg.v || 1} />
+    </div>
+  );
 }
 
 // ─── DOWNLOAD HELPERS ────────────────────────────────────────────────────────
-export async function downloadPDF(element, filename) {
+export async function downloadPDF(element, filename, orientation = 'portrait') {
   try {
     const html2canvas = (await import('html2canvas')).default;
     const { jsPDF }   = await import('jspdf');
@@ -1395,7 +1410,7 @@ export async function downloadPDF(element, filename) {
       scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff',
     });
 
-    const pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdf    = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
     const pageW  = pdf.internal.pageSize.getWidth();
     const pageH  = pdf.internal.pageSize.getHeight();
     const mmToPx = canvas.width / pageW;        // canvas pixels per mm

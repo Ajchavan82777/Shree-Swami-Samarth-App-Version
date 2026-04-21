@@ -7,14 +7,26 @@ import {
 } from '../../components/admin/InvoiceTemplates';
 import { useContent } from '../../context/ContentContext';
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getSavedDefaults() {
+  try { return JSON.parse(localStorage.getItem('sss_invoice_defaults') || '{}'); } catch { return {}; }
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const EVENT_TYPES = [
+const DEFAULT_EVENT_TYPES = [
   'Wedding', 'Reception', 'Corporate Lunch', 'Corporate Dinner', 'Daily Meal Plan',
   'Conference Buffet', 'Birthday Party', 'Anniversary', 'Cocktail Party',
   'Baby Shower', 'Engagement', 'Farewell', 'Award Ceremony', 'Product Launch',
   'Team Outing', 'Festival Event', 'Pooja / Religious Event', 'Other',
 ];
+function loadEventTypes() {
+  try {
+    const s = JSON.parse(localStorage.getItem('sss_event_types') || 'null');
+    return Array.isArray(s) && s.length ? s : DEFAULT_EVENT_TYPES;
+  } catch { return DEFAULT_EVENT_TYPES; }
+}
 
 const DFLT_COMPANY = {
   name: 'Shree Swami Samarth',
@@ -70,9 +82,11 @@ function PreviewModal({ quotation, onClose, company }) {
   const { get } = useContent();
   const settingsLogo = get('company', 'invoice_logo_url', '') || get('company', 'logo_url', '');
 
-  const [template,    setTemplate]    = useState(TEMPLATES[0]?.id || 't01');
-  const [themeName,   setThemeName]   = useState('Gold & Maroon');
-  const [font,        setFont]        = useState('Inter');
+  const _d = getSavedDefaults();
+  const [template,    setTemplate]    = useState(_d.template   || TEMPLATES[0]?.id || 't01');
+  const [themeName,   setThemeName]   = useState(_d.theme      || 'Gold & Maroon');
+  const [font,        setFont]        = useState(_d.font       || 'Inter');
+  const [orientation, setOrientation] = useState(_d.orientation || 'portrait');
   const [gstType,     setGstType]     = useState(quotation.gst_type || 'sgst_cgst');
   const [logo,        setLogo]        = useState('');
   const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);
@@ -115,7 +129,7 @@ function PreviewModal({ quotation, onClose, company }) {
 
   const handleDownloadPDF = async () => {
     setDownloading(true);
-    try { await downloadPDF(printRef.current, quoteNumber); }
+    try { await downloadPDF(printRef.current, quoteNumber, orientation); }
     finally { setDownloading(false); }
   };
 
@@ -165,6 +179,13 @@ function PreviewModal({ quotation, onClose, company }) {
         <select value={gstType} onChange={e => setGstType(e.target.value)}
           style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
           {GST_TYPES.map(g => <option key={g.value} value={g.value} style={{ color: '#000' }}>{g.label}</option>)}
+        </select>
+
+        {/* Orientation */}
+        <select value={orientation} onChange={e => setOrientation(e.target.value)}
+          style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
+          <option value="portrait" style={{ color: '#000' }}>⬜ Portrait</option>
+          <option value="landscape" style={{ color: '#000' }}>▭ Landscape</option>
         </select>
 
         {/* Logo toggle */}
@@ -223,6 +244,7 @@ function PreviewModal({ quotation, onClose, company }) {
               logo={activeLogo}
               gstType={gstType}
               company={company}
+              orientation={orientation}
             />
           </div>
         </div>
@@ -340,15 +362,22 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
     return emptyForm();
   });
 
+  const [eventTypes] = useState(loadEventTypes);
+  const _fd = getSavedDefaults();
   const [saving,      setSaving]      = useState(false);
   const [tab,         setTab]         = useState('form');
-  const [font,        setFont]        = useState('Inter');
-  const [template,    setTemplate]    = useState(TEMPLATES[0]?.id || 't01');
-  const [themeName,   setThemeName]   = useState('Gold & Maroon');
+  const [font,        setFont]        = useState(_fd.font       || 'Inter');
+  const [template,    setTemplate]    = useState(_fd.template   || TEMPLATES[0]?.id || 't01');
+  const [themeName,   setThemeName]   = useState(_fd.theme      || 'Gold & Maroon');
+  const [orientation, setOrientation] = useState(_fd.orientation || 'portrait');
+  const [margins,     setMargins]     = useState(_fd.margins    || { top: 0, right: 0, bottom: 0, left: 0 });
   const [logo,        setLogo]        = useState(settingsLogo);
   const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);
-  const [etSearch,    setEtSearch]    = useState('');
-  const [etOpen,      setEtOpen]      = useState(false);
+  const [etSearch,       setEtSearch]       = useState('');
+  const [etOpen,         setEtOpen]         = useState(false);
+  const [showFullPreview,setShowFullPreview] = useState(false);
+  const [fpZoom,         setFpZoom]         = useState(1.0);
+  const fpRef = useRef(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -387,7 +416,7 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
     payment_status: 'draft',
   };
 
-  const filteredET = EVENT_TYPES.filter(e => e.toLowerCase().includes(etSearch.toLowerCase()));
+  const filteredET = eventTypes.filter(e => e.toLowerCase().includes(etSearch.toLowerCase()));
 
   const handleSave = async () => {
     if (!form.customer_name.trim()) return alert('Client name is required.');
@@ -412,7 +441,61 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
   const firstTemplate = TEMPLATES[0]?.id || 'classic';
   const activeTemplate = TEMPLATES.find(t => t.id === template) ? template : firstTemplate;
 
+  const handleFpPrint = () => {
+    const style = document.createElement('style');
+    style.id = '__fp_print_css_q';
+    style.innerHTML = '@media print { body > * { display:none !important; } #__fp_print_root_q { display:block !important; position:fixed; top:0;left:0;width:100%;z-index:99999; } }';
+    document.head.appendChild(style);
+    const div = document.createElement('div');
+    div.id = '__fp_print_root_q';
+    div.innerHTML = fpRef.current?.innerHTML || '';
+    document.body.appendChild(div);
+    window.print();
+    setTimeout(() => { document.getElementById('__fp_print_css_q')?.remove(); document.getElementById('__fp_print_root_q')?.remove(); }, 1000);
+  };
+
   return (
+    <>
+    {showFullPreview && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px' }}
+        onClick={e => { if (e.target === e.currentTarget) setShowFullPreview(false); }}>
+        <div style={{ width: '100%', maxWidth: 980, height: '94vh', background: '#fff', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 100px rgba(0,0,0,0.6)' }}>
+          <div style={{ background: 'var(--dark)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
+            <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: 14 }}>{isEdit ? 'Edit Quotation — Preview' : 'New Quotation — Preview'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 6px', marginLeft: 8 }}>
+              <button onClick={() => setFpZoom(z => Math.max(0.3, parseFloat((z - 0.1).toFixed(1))))} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>−</button>
+              <span style={{ color: '#ddd', fontSize: 11, minWidth: 36, textAlign: 'center' }}>{Math.round(fpZoom * 100)}%</span>
+              <button onClick={() => setFpZoom(z => Math.min(3.0, parseFloat((z + 0.1).toFixed(1))))} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>+</button>
+              <button onClick={() => setFpZoom(1)} title="Reset" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: 12, padding: '2px 4px' }}>↺</button>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              <button onClick={handleFpPrint} style={{ padding: '6px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Printer size={13} /> Print
+              </button>
+              <button onClick={async () => { await downloadPDF(fpRef.current, 'quotation-preview', orientation); }} style={{ padding: '6px 12px', borderRadius: 6, background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Download size={13} /> PDF
+              </button>
+              <button onClick={async () => { await downloadJPG(fpRef.current, 'quotation-preview'); }} style={{ padding: '6px 12px', borderRadius: 6, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Download size={13} /> JPG
+              </button>
+              <button onClick={() => downloadWord(fpRef.current, 'quotation-preview', 'SSS-QUO-PREVIEW')} style={{ padding: '6px 12px', borderRadius: 6, background: '#1d4ed8', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <FileText size={13} /> Word
+              </button>
+              <button onClick={() => setShowFullPreview(false)} style={{ padding: '6px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', background: '#e5e7eb', padding: 24 }}>
+            <div style={{ zoom: fpZoom }}>
+              <div ref={fpRef} style={{ maxWidth: 820, margin: '0 auto', background: '#fff', borderRadius: 4, boxShadow: '0 4px 24px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+                <InvoicePreview invoice={previewQuotation} template={activeTemplate} themeName={themeName} font={font} logo={activeLogo} gstType={form.gst_type} company={company} orientation={orientation} margins={margins} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 900, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ background: 'var(--dark)', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
@@ -421,12 +504,14 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
         </span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <div style={{ display: 'flex', gap: 4 }}>
-            {['form', 'preview'].map(t => (
-              <button key={t} onClick={() => setTab(t)}
-                style={{ padding: '5px 12px', borderRadius: 6, background: tab === t ? 'var(--gold)' : 'rgba(255,255,255,0.1)', color: tab === t ? 'var(--dark)' : '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === t ? 700 : 400 }}>
-                {t === 'form' ? '📝 Form' : '👁 Preview'}
-              </button>
-            ))}
+            <button onClick={() => setTab('form')}
+              style={{ padding: '5px 12px', borderRadius: 6, background: tab === 'form' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12 }}>
+              📝 Form
+            </button>
+            <button onClick={() => setShowFullPreview(true)}
+              style={{ padding: '5px 14px', borderRadius: 6, background: 'var(--gold)', color: 'var(--dark)', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+              👁 Preview
+            </button>
           </div>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer' }}>
             <X size={16} />
@@ -599,6 +684,25 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
                   {FONTS.map(f => <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>)}
                 </select>
               </FieldGroup>
+              <FieldGroup label="Page Orientation">
+                <select className="form-select" value={orientation} onChange={e => setOrientation(e.target.value)}>
+                  <option value="portrait">⬜ Portrait (A4 vertical)</option>
+                  <option value="landscape">▭ Landscape (A4 horizontal)</option>
+                </select>
+              </FieldGroup>
+            </div>
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-light)', marginBottom: 8 }}>Page Margins (mm) — extra space added inside the page boundary</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+                {['top','right','bottom','left'].map(side => (
+                  <div key={side}>
+                    <label style={{ fontSize: 11, color: 'var(--text-light)', display: 'block', marginBottom: 3, textTransform: 'capitalize' }}>{side}</label>
+                    <input className="form-input" type="number" min="0" max="40" value={margins[side]}
+                      onChange={e => setMargins(m => ({ ...m, [side]: parseFloat(e.target.value) || 0 }))}
+                      style={{ padding: '6px 8px', fontSize: 13 }} />
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Logo */}
@@ -659,12 +763,15 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
               logo={activeLogo}
               gstType={form.gst_type}
               company={company}
+              orientation={orientation}
+              margins={margins}
             />
           </div>
           </div>
         </div>
       </div>
     </div>
+    </>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Phone, ChevronDown } from 'lucide-react';
+import { useContent } from '../../context/ContentContext';
 
 const navLinks = [
   { label: 'Home', path: '/' },
@@ -23,6 +24,8 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [dropdown, setDropdown] = useState(null);
   const loc = useLocation();
+  const { get } = useContent();
+  const phone = get('contact', 'phone', '+91 98765 43210');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -117,11 +120,11 @@ export default function Navbar() {
 
         {/* CTA + Mobile toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <a href="tel:+919876543210" className="nav-phone" style={{
+          <a href={`tel:${phone.replace(/\s/g,'')}`} className="nav-phone" style={{
             display: 'flex', alignItems: 'center', gap: 6,
             fontSize: 13, color: phoneColor, fontWeight: 600, transition: 'color 0.3s',
           }}>
-            <Phone size={14} /> +91 98765 43210
+            <Phone size={14} /> {phone}
           </a>
           <Link to="/request-quote" className="btn btn-primary btn-sm" style={{ background: 'var(--gold)', color: 'var(--dark)', whiteSpace: 'nowrap' }}>
             Get Quote
@@ -163,11 +166,11 @@ export default function Navbar() {
           ))}
 
           <div style={{ marginTop: 20, paddingTop: 16, borderTop: '2px solid var(--cream-dark)' }}>
-            <a href="tel:+919876543210" style={{
+            <a href={`tel:${phone.replace(/\s/g,'')}`} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               color: 'var(--maroon)', fontWeight: 600, fontSize: 15, marginBottom: 14,
             }}>
-              <Phone size={16} /> +91 98765 43210
+              <Phone size={16} /> {phone}
             </a>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <Link to="/request-quote" className="btn btn-primary btn-sm">Get Quote</Link>

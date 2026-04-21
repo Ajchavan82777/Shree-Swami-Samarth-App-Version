@@ -142,19 +142,18 @@ export default function AdminLayout({ children }) {
   useEffect(() => {
     if (permissions === 'loading') return;
     if (permissions === null) return; // admin — all pages allowed
-    const allowedPaths = [
-      '/admin/dashboard', // always allow dashboard as fallback landing
-      ...ALL_NAV.filter(n => permissions[n.key] === true).map(n => n.path),
-    ];
+    const allowedPaths = ALL_NAV.filter(n => permissions[n.key] === true).map(n => n.path);
     if (!allowedPaths.includes(loc.pathname)) {
-      nav('/admin/dashboard', { replace: true });
+      // Redirect to first page the user actually has access to
+      const first = allowedPaths[0] || '/admin/login';
+      nav(first, { replace: true });
     }
   }, [permissions, loc.pathname, nav]);
 
   /* Filter nav based on permissions; admin always sees all */
   const navItems = (permissions === 'loading' || permissions === null)
     ? ALL_NAV
-    : ALL_NAV.filter(n => n.key === 'dashboard' || permissions[n.key] === true);
+    : ALL_NAV.filter(n => permissions[n.key] === true);
 
   /* Close drawer on route change */
   useEffect(() => { setMobileOpen(false); }, [loc.pathname]);
