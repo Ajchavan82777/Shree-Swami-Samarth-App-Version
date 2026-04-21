@@ -52,13 +52,14 @@ function printInvoice(invoice, settings) {
 function PreviewModal({ invoice, onClose, company }) {
   const { get } = useContent();
   const settingsLogo = get('company','invoice_logo_url','') || get('company','logo_url','');
-  const [template,    setTemplate]    = useState('classic');
+  const [template,    setTemplate]    = useState(TEMPLATES[0]?.id || 't01');
   const [themeName,   setThemeName]   = useState('Gold & Maroon');
   const [font,        setFont]        = useState('Inter');
   const [gstType,     setGstType]     = useState(invoice.gst_type || 'sgst_cgst');
   const [logo,        setLogo]        = useState('');
   const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);
   const [tab,         setTab]         = useState('preview');
+  const [zoom,        setZoom]        = useState(1.0);
 
   const activeLogo = includeLogo ? (logo || settingsLogo) : '';
   const printRef = useRef(null);
@@ -94,14 +95,10 @@ function PreviewModal({ invoice, onClose, company }) {
         <span style={{ color:'var(--gold)', fontWeight:700, marginRight:8, fontSize:14 }}>Invoice Preview</span>
 
         {/* Template selector */}
-        <div style={{ display:'flex', gap:4 }}>
-          {TEMPLATES.map(tp => (
-            <button key={tp.id} onClick={() => setTemplate(tp.id)} title={tp.desc}
-              style={{ padding:'5px 10px', borderRadius:6, border:'1px solid', borderColor:template===tp.id?'var(--gold)':'rgba(255,255,255,0.2)', background:template===tp.id?'var(--gold)':'transparent', color:template===tp.id?'var(--dark)':'#fff', cursor:'pointer', fontSize:11 }}>
-              {tp.icon} {tp.name}
-            </button>
-          ))}
-        </div>
+        <select value={template} onChange={e => setTemplate(e.target.value)}
+          style={{ padding:'5px 8px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, cursor:'pointer', maxWidth:180 }}>
+          {TEMPLATES.map(tp => <option key={tp.id} value={tp.id} style={{ color:'#000' }}>{tp.icon} {tp.name}</option>)}
+        </select>
 
         {/* Color theme */}
         <select value={themeName} onChange={e=>setThemeName(e.target.value)}
@@ -133,6 +130,14 @@ function PreviewModal({ invoice, onClose, company }) {
             style={{ padding:'5px 10px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, width:180 }} />
         )}
 
+        {/* Zoom controls */}
+        <div style={{ display:'flex', alignItems:'center', gap:2, background:'rgba(255,255,255,0.08)', borderRadius:6, padding:'2px 6px' }}>
+          <button onClick={() => setZoom(z => Math.max(0.4, parseFloat((z-0.1).toFixed(1))))} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:16, lineHeight:1, padding:'2px 4px' }}>−</button>
+          <span style={{ color:'#ddd', fontSize:11, minWidth:34, textAlign:'center' }}>{Math.round(zoom*100)}%</span>
+          <button onClick={() => setZoom(z => Math.min(3.0, parseFloat((z+0.1).toFixed(1))))} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:16, lineHeight:1, padding:'2px 4px' }}>+</button>
+          <button onClick={() => setZoom(1)} title="Reset zoom" style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', fontSize:13, padding:'2px 4px' }}>↺</button>
+        </div>
+
         <div style={{ marginLeft:'auto', display:'flex', gap:6, flexWrap:'wrap' }}>
           <button onClick={handlePrint} title="Print" style={{ padding:'6px 12px', borderRadius:6, background:'rgba(255,255,255,0.12)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
             <Printer size={13} /> Print
@@ -155,8 +160,10 @@ function PreviewModal({ invoice, onClose, company }) {
 
       {/* Preview area */}
       <div style={{ flex:1, overflow:'auto', background:'#e5e7eb', padding: iw < 640 ? 8 : 24 }}>
-        <div ref={printRef} style={{ minWidth: iw < 640 ? 680 : undefined, maxWidth:820, margin:'0 auto', background:'#fff', borderRadius:4, boxShadow:'0 4px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
-          <InvoicePreview invoice={invoice} template={template} themeName={themeName} font={font} logo={activeLogo} gstType={gstType} company={company} />
+        <div style={{ zoom: zoom }}>
+          <div ref={printRef} style={{ minWidth: iw < 640 ? 680 : undefined, maxWidth:820, margin:'0 auto', background:'#fff', borderRadius:4, boxShadow:'0 4px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
+            <InvoicePreview invoice={invoice} template={template} themeName={themeName} font={font} logo={activeLogo} gstType={gstType} company={company} />
+          </div>
         </div>
       </div>
       </div>

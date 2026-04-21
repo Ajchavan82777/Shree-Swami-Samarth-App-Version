@@ -70,13 +70,14 @@ function PreviewModal({ quotation, onClose, company }) {
   const { get } = useContent();
   const settingsLogo = get('company', 'invoice_logo_url', '') || get('company', 'logo_url', '');
 
-  const [template,    setTemplate]    = useState('t01');
+  const [template,    setTemplate]    = useState(TEMPLATES[0]?.id || 't01');
   const [themeName,   setThemeName]   = useState('Gold & Maroon');
   const [font,        setFont]        = useState('Inter');
   const [gstType,     setGstType]     = useState(quotation.gst_type || 'sgst_cgst');
   const [logo,        setLogo]        = useState('');
   const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);
   const [downloading, setDownloading] = useState(false);
+  const [zoom,        setZoom]        = useState(1.0);
 
   const printRef = useRef(null);
   const activeLogo = includeLogo ? (logo || settingsLogo) : '';
@@ -143,14 +144,10 @@ function PreviewModal({ quotation, onClose, company }) {
         </span>
 
         {/* Template selector */}
-        <div style={{ display: 'flex', gap: 4 }}>
-          {TEMPLATES.map(tp => (
-            <button key={tp.id} onClick={() => setTemplate(tp.id)} title={tp.desc}
-              style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid', borderColor: activeTemplate === tp.id ? 'var(--gold)' : 'rgba(255,255,255,0.2)', background: activeTemplate === tp.id ? 'var(--gold)' : 'transparent', color: activeTemplate === tp.id ? 'var(--dark)' : '#fff', cursor: 'pointer', fontSize: 11 }}>
-              {tp.icon} {tp.name}
-            </button>
-          ))}
-        </div>
+        <select value={activeTemplate} onChange={e => setTemplate(e.target.value)}
+          style={{ padding:'5px 8px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, cursor:'pointer', maxWidth:180 }}>
+          {TEMPLATES.map(tp => <option key={tp.id} value={tp.id} style={{ color:'#000' }}>{tp.icon} {tp.name}</option>)}
+        </select>
 
         {/* Color theme */}
         <select value={themeName} onChange={e => setThemeName(e.target.value)}
@@ -182,6 +179,14 @@ function PreviewModal({ quotation, onClose, company }) {
             style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, width: 180 }} />
         )}
 
+        {/* Zoom controls */}
+        <div style={{ display:'flex', alignItems:'center', gap:2, background:'rgba(255,255,255,0.08)', borderRadius:6, padding:'2px 6px' }}>
+          <button onClick={() => setZoom(z => Math.max(0.4, parseFloat((z-0.1).toFixed(1))))} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:16, lineHeight:1, padding:'2px 4px' }}>−</button>
+          <span style={{ color:'#ddd', fontSize:11, minWidth:34, textAlign:'center' }}>{Math.round(zoom*100)}%</span>
+          <button onClick={() => setZoom(z => Math.min(3.0, parseFloat((z+0.1).toFixed(1))))} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:16, lineHeight:1, padding:'2px 4px' }}>+</button>
+          <button onClick={() => setZoom(1)} title="Reset zoom" style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', fontSize:13, padding:'2px 4px' }}>↺</button>
+        </div>
+
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <button onClick={handlePrint} disabled={downloading}
             style={{ padding: '6px 14px', borderRadius: 6, background: 'var(--gold)', color: 'var(--dark)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -208,16 +213,18 @@ function PreviewModal({ quotation, onClose, company }) {
 
       {/* Preview area */}
       <div style={{ flex: 1, overflow: 'auto', background: '#e5e7eb', padding: iw < 640 ? 8 : 24 }}>
-        <div ref={printRef} style={{ minWidth: iw < 640 ? 680 : undefined, maxWidth: 820, margin: '0 auto', background: '#fff', borderRadius: 4, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
-          <InvoicePreview
-            invoice={previewData}
-            template={activeTemplate}
-            themeName={themeName}
-            font={font}
-            logo={activeLogo}
-            gstType={gstType}
-            company={company}
-          />
+        <div style={{ zoom: zoom }}>
+          <div ref={printRef} style={{ minWidth: iw < 640 ? 680 : undefined, maxWidth: 820, margin: '0 auto', background: '#fff', borderRadius: 4, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+            <InvoicePreview
+              invoice={previewData}
+              template={activeTemplate}
+              themeName={themeName}
+              font={font}
+              logo={activeLogo}
+              gstType={gstType}
+              company={company}
+            />
+          </div>
         </div>
       </div>
       </div>
@@ -270,7 +277,7 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
   const [saving,      setSaving]      = useState(false);
   const [tab,         setTab]         = useState('form');
   const [font,        setFont]        = useState('Inter');
-  const [template,    setTemplate]    = useState('classic');
+  const [template,    setTemplate]    = useState(TEMPLATES[0]?.id || 't01');
   const [themeName,   setThemeName]   = useState('Gold & Maroon');
   const [logo,        setLogo]        = useState(settingsLogo);
   const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);

@@ -63,8 +63,17 @@ def create():
         "notes":         d.get("notes"),
         "status":        d.get("status", "draft"),
     }
-    result = get_sb().table("quotations").insert(row).execute()
-    return jsonify(result.data[0]), 201
+    try:
+        result = get_sb().table("quotations").insert(row).execute()
+        return jsonify(result.data[0]), 201
+    except Exception as e:
+        err = str(e)
+        if any(col in err for col in ("gst_type", "phone", "venue", "quote_date", "valid_until", "column", "42703")):
+            return jsonify({
+                "message": "Database schema is outdated. Please run migrations/005_quotations_columns.sql in Supabase SQL Editor to add required columns.",
+                "error": err,
+            }), 500
+        return jsonify({"message": "Database error", "error": err}), 500
 
 
 @quotations_bp.route("/<int:id>", methods=["PUT"])

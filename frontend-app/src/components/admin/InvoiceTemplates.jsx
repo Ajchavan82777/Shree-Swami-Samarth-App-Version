@@ -239,7 +239,7 @@ function ItemsTable({ invoice, t, fontSize=13, compact=false }) {
       </thead>
       <tbody>
         {(invoice.items||[]).map((item, i) => (
-          <tr key={i} style={{ borderBottom:`1px solid ${t.light}`, background:i%2===0?'#fff':t.bg }}>
+          <tr key={i} style={{ borderBottom:`1px solid ${t.light}`, background:i%2===0?'#fff':t.bg, pageBreakInside:'avoid', breakInside:'avoid' }}>
             <td style={{ padding:bPad }}>{item.description}</td>
             <td style={{ padding:bPad, textAlign:'right', color:'#666' }}>{item.qty}</td>
             <td style={{ padding:bPad, textAlign:'right', color:'#666' }}>{fmt(item.rate)}</td>
@@ -1390,28 +1390,54 @@ export async function downloadPDF(element, filename) {
   try {
     const html2canvas = (await import('html2canvas')).default;
     const { jsPDF }   = await import('jspdf');
+
     const canvas = await html2canvas(element, {
       scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff',
     });
-    const pdf   = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const imgH  = (canvas.height * pageW) / canvas.width;
-    let y = 0;
-    if (imgH <= pageH) {
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pageW, imgH);
-    } else {
-      let remaining = imgH;
-      while (remaining > 0) {
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, y > 0 ? -(imgH - remaining) : 0, pageW, imgH);
-        remaining -= pageH;
-        if (remaining > 0) pdf.addPage();
-        y += pageH;
-      }
+
+    const pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW  = pdf.internal.pageSize.getWidth();
+    const pageH  = pdf.internal.pageSize.getHeight();
+    const mmToPx = canvas.width / pageW;        // canvas pixels per mm
+    const pageHpx = Math.floor(pageH * mmToPx); // A4 page height in canvas pixels
+
+    // Collect safe Y-cut positions at row boundaries (so no row is ever sliced)
+    const elRect  = element.getBoundingClientRect();
+    const pxScale = canvas.height / elRect.height; // canvas px per CSS px
+    const safeCuts = new Set([0, canvas.height]);
+    element.querySelectorAll('tr').forEach(row => {
+      const bottom = (row.getBoundingClientRect().bottom - elRect.top) * pxScale;
+      if (bottom > 0) safeCuts.add(Math.round(bottom));
+    });
+    const cuts = [...safeCuts].sort((a, b) => a - b);
+
+    // Build page slices aligned to row boundaries
+    let sliceStart = 0;
+    const slices   = [];
+    while (sliceStart < canvas.height) {
+      const ideal = sliceStart + pageHpx;
+      if (ideal >= canvas.height) { slices.push([sliceStart, canvas.height]); break; }
+      // Last safe cut that fits within this page (and is past current start)
+      const fit = cuts.filter(c => c <= ideal && c > sliceStart);
+      const cut = fit.length ? fit[fit.length - 1] : ideal;
+      slices.push([sliceStart, cut]);
+      sliceStart = cut;
     }
+
+    // Render each slice as one PDF page
+    slices.forEach(([y0, y1], i) => {
+      const h  = y1 - y0;
+      const sc = document.createElement('canvas');
+      sc.width  = canvas.width;
+      sc.height = h;
+      sc.getContext('2d').drawImage(canvas, 0, y0, canvas.width, h, 0, 0, canvas.width, h);
+      if (i > 0) pdf.addPage();
+      pdf.addImage(sc.toDataURL('image/png'), 'PNG', 0, 0, pageW, h / mmToPx);
+    });
+
     pdf.save(filename + '.pdf');
   } catch (e) {
-    console.error('PDF download requires html2canvas and jspdf packages', e);
+    console.error('PDF download error:', e);
     window.print();
   }
 }
