@@ -5,6 +5,11 @@ from models.db import get_sb
 quotations_bp = Blueprint("quotations", __name__)
 
 
+def _d(v):
+    """Convert empty string / falsy value to None for DATE columns."""
+    return v if v else None
+
+
 def _calc(items, discount, tax_rate):
     subtotal   = sum(i.get("total", i.get("qty", 0) * i.get("rate", 0)) for i in items)
     taxable    = max(subtotal - discount, 0)
@@ -38,12 +43,25 @@ def create():
     tax_rate = float(d.get("tax_rate", 5))
     subtotal, tax_amount, total = _calc(items, discount, tax_rate)
     row = {
-        "inquiry_id": d.get("inquiry_id"), "customer_name": d.get("customer_name"),
-        "company_name": d.get("company_name"), "email": d.get("email"),
-        "event_type": d.get("event_type"), "event_date": d.get("event_date"),
-        "items": items, "subtotal": subtotal, "discount": discount,
-        "tax_rate": tax_rate, "tax_amount": tax_amount, "total": total,
-        "notes": d.get("notes"), "status": d.get("status", "draft"),
+        "inquiry_id":    d.get("inquiry_id"),
+        "customer_name": d.get("customer_name"),
+        "company_name":  d.get("company_name"),
+        "email":         d.get("email"),
+        "phone":         d.get("phone"),
+        "event_type":    d.get("event_type"),
+        "event_date":    _d(d.get("event_date")),
+        "venue":         d.get("venue"),
+        "quote_date":    _d(d.get("quote_date")),
+        "valid_until":   _d(d.get("valid_until")),
+        "gst_type":      d.get("gst_type", "sgst_cgst"),
+        "items":         items,
+        "subtotal":      subtotal,
+        "discount":      discount,
+        "tax_rate":      tax_rate,
+        "tax_amount":    tax_amount,
+        "total":         total,
+        "notes":         d.get("notes"),
+        "status":        d.get("status", "draft"),
     }
     result = get_sb().table("quotations").insert(row).execute()
     return jsonify(result.data[0]), 201
@@ -64,8 +82,12 @@ def update(id):
     subtotal, tax_amount, total = _calc(items, discount, tax_rate)
 
     allowed = {"inquiry_id", "customer_name", "company_name", "email",
-               "event_type", "event_date", "notes", "status"}
+               "phone", "event_type", "venue", "notes", "status", "gst_type"}
     sets = {k: v for k, v in d.items() if k in allowed}
+    # Handle date fields explicitly to convert empty strings to None
+    for df in ("event_date", "quote_date", "valid_until"):
+        if df in d:
+            sets[df] = _d(d[df])
     sets.update({
         "items": items, "subtotal": subtotal, "discount": discount,
         "tax_rate": tax_rate, "tax_amount": tax_amount, "total": total,
