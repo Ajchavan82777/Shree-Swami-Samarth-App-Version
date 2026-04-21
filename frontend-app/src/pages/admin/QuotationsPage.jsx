@@ -130,9 +130,12 @@ function PreviewModal({ quotation, onClose, company }) {
 
   const firstTemplate = TEMPLATES[0]?.id || 'classic';
   const activeTemplate = TEMPLATES.find(t => t.id === template) ? template : firstTemplate;
+  const iw = typeof window !== 'undefined' ? window.innerWidth : 1200;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding: iw < 640 ? 0 : '12px' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ width:'100%', maxWidth:960, height: iw < 640 ? '100vh' : '92vh', background:'#fff', borderRadius: iw < 640 ? 0 : 12, overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 24px 80px rgba(0,0,0,0.4)' }}>
       {/* Top toolbar */}
       <div style={{ background: 'var(--dark)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ color: 'var(--gold)', fontWeight: 700, marginRight: 8, fontSize: 14 }}>
@@ -204,8 +207,8 @@ function PreviewModal({ quotation, onClose, company }) {
       </div>
 
       {/* Preview area */}
-      <div style={{ flex: 1, overflow: 'auto', background: '#e5e7eb', padding: 24 }}>
-        <div ref={printRef} style={{ maxWidth: 820, margin: '0 auto', background: '#fff', borderRadius: 4, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'auto', background: '#e5e7eb', padding: iw < 640 ? 8 : 24 }}>
+        <div ref={printRef} style={{ minWidth: iw < 640 ? 680 : undefined, maxWidth: 820, margin: '0 auto', background: '#fff', borderRadius: 4, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
           <InvoicePreview
             invoice={previewData}
             template={activeTemplate}
@@ -216,6 +219,7 @@ function PreviewModal({ quotation, onClose, company }) {
             company={company}
           />
         </div>
+      </div>
       </div>
     </div>
   );
@@ -311,10 +315,11 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
     try {
       if (isEdit) {
         await api.put(`/quotations/${editQuotation.id}`, form);
+        onSave(null);
       } else {
-        await api.post('/quotations/', form);
+        const r = await api.post('/quotations/', form);
+        onSave(r.data);
       }
-      onSave();
     } catch (e) {
       alert('Error saving quotation: ' + (e.response?.data?.error || e.message));
     } finally {
@@ -563,7 +568,8 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
         {/* RIGHT: Live Preview */}
         <div style={{ width: 460, flexShrink: 0, overflow: 'auto', background: '#e5e7eb', padding: 16, borderLeft: '1px solid var(--border)', display: tab === 'form' && iw < 900 ? 'none' : 'block' }}>
           <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#888', marginBottom: 12, textAlign: 'center' }}>Live Preview</p>
-          <div style={{ background: '#fff', borderRadius: 4, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.1)', transformOrigin: 'top center', transform: 'scale(0.85)' }}>
+          <div style={{ overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ background: '#fff', borderRadius: 4, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.1)', minWidth: 820 }}>
             <InvoicePreview
               invoice={previewQuotation}
               template={activeTemplate}
@@ -573,6 +579,7 @@ function QuotationForm({ onSave, onClose, company, editQuotation }) {
               gstType={form.gst_type}
               company={company}
             />
+          </div>
           </div>
         </div>
       </div>
@@ -655,7 +662,7 @@ export default function QuotationsPage() {
       )}
       {creating && (
         <QuotationForm
-          onSave={() => { load(); setCreating(false); }}
+          onSave={(quo) => { load(); setCreating(false); if (quo) setTimeout(() => setPreview(quo), 80); }}
           onClose={() => setCreating(false)}
           company={company}
         />

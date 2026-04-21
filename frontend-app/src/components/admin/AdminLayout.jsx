@@ -5,7 +5,7 @@ import api from '../../utils/api';
 import {
   LayoutDashboard, MessageSquare, Users, Building2, Calendar,
   FileText, Receipt, Package, UserCheck, BarChart2, Settings,
-  LogOut, Menu, X, ChefHat, Layers, Shield
+  LogOut, Menu, X, ChefHat, Layers, Shield, Code2
 } from 'lucide-react';
 
 const ALL_NAV = [
@@ -23,6 +23,7 @@ const ALL_NAV = [
   { path: '/admin/settings',   icon: Settings,        label: 'Settings',        key: 'settings'   },
   { path: '/admin/roles',      icon: Shield,          label: 'Roles & Access',  key: 'roles'      },
   { path: '/admin/users',      icon: Users,           label: 'Users',            key: 'users'      },
+  { path: '/admin/developer',  icon: Code2,           label: 'Developer Support', key: 'developer'  },
 ];
 
 /* Nav list always rendered with icon + label */

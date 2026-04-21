@@ -84,10 +84,13 @@ function PreviewModal({ invoice, onClose, company }) {
     <button onClick={onClick} style={{ padding:'6px 12px', borderRadius:6, border:'1px solid var(--border)', background:active?'var(--dark)':'#fff', color:active?'#fff':'inherit', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', gap:4 }}>{children}</button>
   );
 
+  const iw = typeof window !== 'undefined' ? window.innerWidth : 1200;
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000, display:'flex', flexDirection:'column' }}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding: iw < 640 ? 0 : '12px' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ width:'100%', maxWidth:960, height: iw < 640 ? '100vh' : '92vh', background:'#fff', borderRadius: iw < 640 ? 0 : 12, overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 24px 80px rgba(0,0,0,0.4)' }}>
       {/* Top bar */}
-      <div style={{ background:'var(--dark)', padding:'10px 16px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+      <div style={{ background:'var(--dark)', padding:'10px 16px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', flexShrink:0 }}>
         <span style={{ color:'var(--gold)', fontWeight:700, marginRight:8, fontSize:14 }}>Invoice Preview</span>
 
         {/* Template selector */}
@@ -151,10 +154,11 @@ function PreviewModal({ invoice, onClose, company }) {
       </div>
 
       {/* Preview area */}
-      <div style={{ flex:1, overflow:'auto', background:'#e5e7eb', padding:24 }}>
-        <div ref={printRef} style={{ maxWidth:820, margin:'0 auto', background:'#fff', borderRadius:4, boxShadow:'0 4px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
+      <div style={{ flex:1, overflow:'auto', background:'#e5e7eb', padding: iw < 640 ? 8 : 24 }}>
+        <div ref={printRef} style={{ minWidth: iw < 640 ? 680 : undefined, maxWidth:820, margin:'0 auto', background:'#fff', borderRadius:4, boxShadow:'0 4px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
           <InvoicePreview invoice={invoice} template={template} themeName={themeName} font={font} logo={activeLogo} gstType={gstType} company={company} />
         </div>
+      </div>
       </div>
     </div>
   );
@@ -229,10 +233,11 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
     try {
       if (isEdit) {
         await api.put(`/invoices/${editInvoice.id}`, form);
+        onSave(null);
       } else {
-        await api.post('/invoices/', form);
+        const r = await api.post('/invoices/', form);
+        onSave(r.data);
       }
-      onSave();
     } catch(e) { alert('Error: '+e.message); } finally { setSaving(false); }
   };
 
@@ -428,8 +433,10 @@ function InvoiceForm({ onSave, onClose, company, editInvoice }) {
         {/* ── RIGHT: Live Preview ── */}
         <div style={{ width:460, flexShrink:0, overflow:'auto', background:'#e5e7eb', padding:16, borderLeft:'1px solid var(--border)', display: tab==='form'&&iw<900?'none':'block' }}>
           <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'1px', color:'#888', marginBottom:12, textAlign:'center' }}>Live Preview</p>
-          <div style={{ background:'#fff', borderRadius:4, overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.1)', transformOrigin:'top center', transform:'scale(0.85)' }}>
-            <InvoicePreview invoice={previewInvoice} template={template} themeName={themeName} font={font} logo={includeLogo ? (logo || settingsLogo) : ''} gstType={form.gst_type} company={company} />
+          <div style={{ overflow:'auto', WebkitOverflowScrolling:'touch' }}>
+            <div style={{ background:'#fff', borderRadius:4, overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.1)', minWidth:820 }}>
+              <InvoicePreview invoice={previewInvoice} template={template} themeName={themeName} font={font} logo={includeLogo ? (logo || settingsLogo) : ''} gstType={form.gst_type} company={company} />
+            </div>
           </div>
         </div>
       </div>
@@ -493,8 +500,8 @@ export default function InvoicesPage() {
   return (
     <div>
       {preview  && <PreviewModal invoice={preview} onClose={()=>setPreview(null)} company={company} />}
-      {creating && <InvoiceForm  onSave={()=>{ load(); setCreating(false); }} onClose={()=>setCreating(false)} company={company} />}
-      {editing  && <InvoiceForm  onSave={()=>{ load(); setEditing(null);   }} onClose={()=>setEditing(null)}   company={company} editInvoice={editing} />}
+      {creating && <InvoiceForm  onSave={(inv)=>{ load(); setCreating(false); if (inv) setTimeout(()=>setPreview(inv), 80); }} onClose={()=>setCreating(false)} company={company} />}
+      {editing  && <InvoiceForm  onSave={()=>{ load(); setEditing(null); }} onClose={()=>setEditing(null)} company={company} editInvoice={editing} />}
 
       <div className="page-header" style={{ flexWrap:'wrap', gap:10 }}>
         <h1 className="page-title">Invoices & Billing</h1>

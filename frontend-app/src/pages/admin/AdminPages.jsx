@@ -204,11 +204,45 @@ export function BookingsPage() {
 }
 
 // ---- CUSTOMERS PAGE ----
+const EMPTY_CUSTOMER = { name: '', email: '', phone: '', type: 'individual', company: '', city: '' };
+
 export function CustomersPage() {
-  const [items, setItems] = useState([]);
+  const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { api.get('/customers/').then(r => { setItems(r.data); setLoading(false); }).catch(() => setLoading(false)); }, []);
-  const handleDelete = async (id) => { if (!confirm('Delete?')) return; await api.delete(`/customers/${id}`); const r = await api.get('/customers/'); setItems(r.data); };
+  const [modal,   setModal]   = useState(null);   // null | 'create' | 'edit'
+  const [form,    setForm]    = useState(EMPTY_CUSTOMER);
+  const [editId,  setEditId]  = useState(null);
+  const [saving,  setSaving]  = useState(false);
+
+  const reload = () => api.get('/customers/').then(r => { setItems(r.data); setLoading(false); }).catch(() => setLoading(false));
+  useEffect(() => { reload(); }, []);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const openCreate = () => { setForm(EMPTY_CUSTOMER); setEditId(null); setModal('create'); };
+  const openEdit   = row => { setForm({ name: row.name || '', email: row.email || '', phone: row.phone || '', type: row.type || 'individual', company: row.company || '', city: row.city || '' }); setEditId(row.id); setModal('edit'); };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return alert('Name is required.');
+    setSaving(true);
+    try {
+      if (modal === 'edit') {
+        await api.put(`/customers/${editId}`, form);
+      } else {
+        await api.post('/customers/', form);
+      }
+      setModal(null);
+      reload();
+    } catch (e) { alert('Error: ' + (e.response?.data?.error || e.message)); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this customer?')) return;
+    await api.delete(`/customers/${id}`);
+    reload();
+  };
+
   const columns = [
     { key: 'name', label: 'Name', render: (v, row) => <div><div style={{ fontWeight: 600 }}>{v}</div>{row.company && <div style={{ fontSize: 12, color: 'var(--text-light)' }}>{row.company}</div>}</div> },
     { key: 'email', label: 'Email' },
@@ -218,7 +252,42 @@ export function CustomersPage() {
     { key: 'total_bookings', label: 'Bookings' },
     { key: 'total_spent', label: 'Total Spent', render: v => fmt(v) },
   ];
-  return <CrudTable title="Customers" columns={columns} rows={items} loading={loading} onDelete={handleDelete} />;
+
+  return (
+    <>
+      <CrudTable title="Customers" columns={columns} rows={items} loading={loading} onCreate={openCreate} onEdit={openEdit} onDelete={handleDelete} exportFilename="customers" />
+      {(modal === 'create' || modal === 'edit') && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{modal === 'edit' ? 'Edit Customer' : 'New Customer'}</h2>
+              <button className="close-btn" onClick={() => setModal(null)}><X size={20} /></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="form-group"><label className="form-label">Name *</label><input className="form-input" value={form.name} onChange={e => set('name', e.target.value)} /></div>
+                <div className="form-group">
+                  <label className="form-label">Type</label>
+                  <select className="form-select" value={form.type} onChange={e => set('type', e.target.value)}>
+                    <option value="individual">Individual</option>
+                    <option value="corporate">Corporate</option>
+                  </select>
+                </div>
+                <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" value={form.email} onChange={e => set('email', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Phone</label><input className="form-input" value={form.phone} onChange={e => set('phone', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Company</label><input className="form-input" value={form.company} onChange={e => set('company', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">City</label><input className="form-input" value={form.city} onChange={e => set('city', e.target.value)} /></div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : modal === 'edit' ? 'Save Changes' : 'Create Customer'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 // ---- PACKAGES ADMIN PAGE ----

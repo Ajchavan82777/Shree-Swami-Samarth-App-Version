@@ -172,7 +172,21 @@ tr:hover td { background: var(--cream); }
   .inv-grid-2 { grid-template-columns: 1fr !important; }
   .inv-grid-3 { grid-template-columns: 1fr 1fr !important; }
   .inv-items-header { display: none !important; }
-  .inv-items-row { grid-template-columns: 1fr 52px 72px 68px 22px !important; }
+  .inv-items-row {
+    grid-template-columns: 1fr 1fr 1fr auto !important;
+    grid-template-rows: auto auto !important;
+    grid-template-areas: "desc desc desc del" "qty rate total ." !important;
+    padding: 8px 6px !important;
+    background: var(--cream) !important;
+    border-radius: 6px !important;
+    margin-bottom: 8px !important;
+    gap: 6px !important;
+  }
+  .inv-items-row > *:nth-child(1) { grid-area: desc; }
+  .inv-items-row > *:nth-child(2) { grid-area: qty; }
+  .inv-items-row > *:nth-child(3) { grid-area: rate; }
+  .inv-items-row > *:nth-child(4) { grid-area: total; font-size: 13px; }
+  .inv-items-row > *:nth-child(5) { grid-area: del; align-self: start; justify-self: end; }
 }
 
 /* ── Admin portal mobile tweaks ─────────────────────────────── */

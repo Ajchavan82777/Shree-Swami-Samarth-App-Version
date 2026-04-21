@@ -88,14 +88,38 @@ def get_dashboard():
         .order("event_date").limit(5).execute().data
     )
 
-    # ── All upcoming events for calendar (no limit, max 100) ─────────────────
+    # ── All events for calendar (past 6 months + future) ────────────────────
 
+    from datetime import date as _d
+    cal_start = (_d.today().replace(day=1) - timedelta(days=180)).isoformat()
     all_events = (
         sb.table("bookings")
         .select("id, event_date, event_end_date, customer_name, event_type, status, venue, total_amount")
-        .gte("event_date", today).neq("status", "cancelled")
-        .order("event_date").limit(100).execute().data
+        .gte("event_date", cal_start)
+        .order("event_date").limit(500).execute().data
     )
+
+    # ── Pipeline status counts (replaces 3 separate frontend API calls) ──────
+
+    def count_by(rows, field):
+        c = {}
+        for r in rows:
+            v = r.get(field) or "unknown"
+            c[v] = c.get(v, 0) + 1
+        return c
+
+    inq_all  = sb.table("inquiries").select("status").execute().data or []
+    inv_stat = sb.table("invoices").select("payment_status").execute().data or []
+    bk_all   = sb.table("bookings").select("status").execute().data or []
+
+    pipeline = {
+        "inquiry_status": count_by(inq_all,  "status"),
+        "invoice_status": count_by(inv_stat, "payment_status"),
+        "booking_status": count_by(bk_all,   "status"),
+        "total_inquiries_all": len(inq_all),
+        "total_invoices_all":  len(inv_stat),
+        "total_bookings_all":  len(bk_all),
+    }
 
     return jsonify({
         "summary": {
@@ -114,5 +138,6 @@ def get_dashboard():
         "recent_invoices":  recent_invoices,
         "upcoming_events":  upcoming_events,
         "all_events":       all_events,
+        "pipeline":         pipeline,
         "period":           period,
     })

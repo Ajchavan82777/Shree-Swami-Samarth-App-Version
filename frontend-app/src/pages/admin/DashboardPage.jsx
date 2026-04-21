@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   MessageSquare, Building2, Calendar, IndianRupee, Clock,
-  TrendingUp, FileText, Receipt, ChevronLeft, ChevronRight, X, Plus
+  TrendingUp, FileText, Receipt, ChevronLeft, ChevronRight, X, Plus, Download
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import api, { fmt, fmtDate, cap } from '../../utils/api';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -227,7 +229,7 @@ function CalendarView({ events, onRefresh }) {
   const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const DOW_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const YEARS = Array.from({ length: 8 }, (_, i) => today.getFullYear() - 2 + i);
+  const YEARS = Array.from({ length: 111 }, (_, i) => 1980 + i);
 
   const firstDay    = new Date(year, mon, 1).getDay();
   const daysInMonth = new Date(year, mon + 1, 0).getDate();
@@ -459,32 +461,36 @@ function ProgressBar({ label, value, total, color }) {
   );
 }
 
-function StatusProgress({ inquiries, invoices, bookings }) {
-  const countBy = (arr, field, val) => (arr || []).filter(r => r[field] === val).length;
-  const total   = arr => (arr || []).length;
-  const inqTotal = total(inquiries), invTotal = total(invoices), bkTotal = total(bookings);
+function StatusProgress({ pipeline }) {
+  if (!pipeline) return null;
+  const inqSt    = pipeline.inquiry_status || {};
+  const invSt    = pipeline.invoice_status || {};
+  const bkSt     = pipeline.booking_status || {};
+  const inqTotal = pipeline.total_inquiries_all || 0;
+  const invTotal = pipeline.total_invoices_all  || 0;
+  const bkTotal  = pipeline.total_bookings_all  || 0;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 16, marginBottom: 20 }}>
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}><MessageSquare size={16} style={{ color: 'var(--maroon)' }} /> Inquiries Pipeline</h3>
-        <ProgressBar label="New"       value={countBy(inquiries,'status','new')}       total={inqTotal} color="#42a5f5" />
-        <ProgressBar label="Quoted"    value={countBy(inquiries,'status','quoted')}    total={inqTotal} color="#ab47bc" />
-        <ProgressBar label="Booked"    value={countBy(inquiries,'status','booked')}    total={inqTotal} color="#26a69a" />
-        <ProgressBar label="Completed" value={countBy(inquiries,'status','completed')} total={inqTotal} color="var(--success)" />
-        <ProgressBar label="Cancelled" value={countBy(inquiries,'status','cancelled')} total={inqTotal} color="var(--error)" />
+        <ProgressBar label="New"       value={inqSt.new       || 0} total={inqTotal} color="#42a5f5" />
+        <ProgressBar label="Quoted"    value={inqSt.quoted    || 0} total={inqTotal} color="#ab47bc" />
+        <ProgressBar label="Booked"    value={inqSt.booked    || 0} total={inqTotal} color="#26a69a" />
+        <ProgressBar label="Completed" value={inqSt.completed || 0} total={inqTotal} color="var(--success)" />
+        <ProgressBar label="Cancelled" value={inqSt.cancelled || 0} total={inqTotal} color="var(--error)" />
       </div>
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}><Receipt size={16} style={{ color: 'var(--maroon)' }} /> Invoice Status</h3>
-        <ProgressBar label="Paid"    value={countBy(invoices,'payment_status','paid')}    total={invTotal} color="var(--success)" />
-        <ProgressBar label="Partial" value={countBy(invoices,'payment_status','partial')} total={invTotal} color="var(--warning)" />
-        <ProgressBar label="Unpaid"  value={countBy(invoices,'payment_status','unpaid')}  total={invTotal} color="var(--error)" />
+        <ProgressBar label="Paid"    value={invSt.paid    || 0} total={invTotal} color="var(--success)" />
+        <ProgressBar label="Partial" value={invSt.partial || 0} total={invTotal} color="var(--warning)" />
+        <ProgressBar label="Unpaid"  value={invSt.unpaid  || 0} total={invTotal} color="var(--error)" />
       </div>
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}><Calendar size={16} style={{ color: 'var(--maroon)' }} /> Bookings Status</h3>
-        <ProgressBar label="Confirmed" value={countBy(bookings,'status','confirmed')} total={bkTotal} color="#42a5f5" />
-        <ProgressBar label="Ongoing"   value={countBy(bookings,'status','ongoing')}   total={bkTotal} color="var(--warning)" />
-        <ProgressBar label="Completed" value={countBy(bookings,'status','completed')} total={bkTotal} color="var(--success)" />
-        <ProgressBar label="Cancelled" value={countBy(bookings,'status','cancelled')} total={bkTotal} color="var(--error)" />
+        <ProgressBar label="Confirmed" value={bkSt.confirmed || 0} total={bkTotal} color="#42a5f5" />
+        <ProgressBar label="Ongoing"   value={bkSt.ongoing   || 0} total={bkTotal} color="var(--warning)" />
+        <ProgressBar label="Completed" value={bkSt.completed || 0} total={bkTotal} color="var(--success)" />
+        <ProgressBar label="Cancelled" value={bkSt.cancelled || 0} total={bkTotal} color="var(--error)" />
       </div>
     </div>
   );
@@ -518,11 +524,12 @@ const PERIODS = [
 ];
 
 export default function DashboardPage() {
-  const [period,  setPeriod]  = useState('month');
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [period,    setPeriod]    = useState('month');
+  const [data,      setData]      = useState(null);
+  const [loading,   setLoading]   = useState(true);
   const [drilldown, setDrilldown] = useState(null);
-  const [pipelineData, setPipelineData] = useState({ inquiries: [], invoices: [], bookings: [] });
+  const [pdfBusy,   setPdfBusy]   = useState(false);
+  const dashboardRef = useRef(null);
 
   const fetchDashboard = useCallback((p) => {
     setLoading(true);
@@ -534,21 +541,30 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchDashboard(period); }, [period, fetchDashboard]);
 
-  useEffect(() => {
-    Promise.all([
-      api.get('/inquiries/').catch(() => ({ data: [] })),
-      api.get('/invoices/').catch(() => ({ data: [] })),
-      api.get('/bookings/').catch(() => ({ data: [] })),
-    ]).then(([inqR, invR, bkR]) => {
-      const unwrap = r => r.data?.results ?? r.data ?? [];
-      setPipelineData({ inquiries: unwrap(inqR), invoices: unwrap(invR), bookings: unwrap(bkR) });
-    });
-  }, []);
+  const handleDownloadPDF = async () => {
+    const el = dashboardRef.current;
+    if (!el) return;
+    setPdfBusy(true);
+    try {
+      const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#FDF8F0' });
+      const pdf    = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+      const pdfW   = pdf.internal.pageSize.getWidth();
+      const pdfH   = (canvas.height * pdfW) / canvas.width;
+      const pageH  = pdf.internal.pageSize.getHeight();
+      let   yPos   = 0;
+      while (yPos < pdfH) {
+        if (yPos > 0) pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, -yPos, pdfW, pdfH);
+        yPos += pageH;
+      }
+      pdf.save(`dashboard-summary-${new Date().toISOString().split('T')[0]}.pdf`);
+    } finally { setPdfBusy(false); }
+  };
 
   if (loading) return <div className="loading">Loading dashboard…</div>;
   if (!data)   return <div className="empty">Failed to load dashboard data.</div>;
 
-  const { summary, recent_inquiries, recent_invoices, upcoming_events, all_events } = data;
+  const { summary, recent_inquiries, recent_invoices, upcoming_events, all_events, pipeline } = data;
 
   const KPI_CARDS = [
     { icon: MessageSquare, label: 'Total Inquiries',   value: summary.total_inquiries,         color: '#E3F2FD', iconColor: '#1565C0', dd: { title: 'Total Inquiries',   endpoint: '/inquiries/',  type: 'inquiries'  } },
@@ -562,10 +578,15 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div>
+    <div ref={dashboardRef}>
       <div className="page-header">
         <h1 className="page-title">Dashboard Overview</h1>
-        <Link to="/admin/inquiries" className="btn btn-primary btn-sm">+ New Inquiry</Link>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={handleDownloadPDF} disabled={pdfBusy} className="btn btn-ghost btn-sm" title="Download summary as PDF">
+            <Download size={14} /> {pdfBusy ? 'Generating…' : 'PDF'}
+          </button>
+          <Link to="/admin/inquiries" className="btn btn-primary btn-sm">+ New Inquiry</Link>
+        </div>
       </div>
 
       {/* Period filter */}
@@ -592,7 +613,7 @@ export default function DashboardPage() {
       <CalendarView events={all_events || upcoming_events || []} onRefresh={() => fetchDashboard(period)} />
 
       {/* Status bars */}
-      <StatusProgress inquiries={pipelineData.inquiries} invoices={pipelineData.invoices} bookings={pipelineData.bookings} />
+      <StatusProgress pipeline={pipeline} />
 
       {/* Recent activity */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px,1fr))', gap: 16 }}>
