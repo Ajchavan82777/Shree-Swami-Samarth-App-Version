@@ -39,9 +39,11 @@ const SECTIONS = [
       { key: 'tagline',        label: 'Company Tagline',           type: 'text' },
       { key: 'gstin',          label: 'GSTIN Number',              type: 'text' },
       { key: 'description',    label: 'Company Description',       type: 'textarea' },
-      { key: 'invoice_prefix', label: 'Invoice Number Prefix',     type: 'text', hint: 'e.g. SSS-INV-' },
-      { key: 'tax_rate',       label: 'Default Tax Rate (%)',      type: 'text', hint: 'e.g. 5' },
-      { key: 'due_days',       label: 'Invoice Due Days',          type: 'text', hint: 'e.g. 15' },
+      { key: 'invoice_prefix', label: 'Invoice Number Prefix',     type: 'text',  hint: 'e.g. SSS-INV-' },
+      { key: 'tax_rate',       label: 'Default Tax Rate (%)',      type: 'text',  hint: 'e.g. 18' },
+      { key: 'due_days',       label: 'Invoice Due Days',          type: 'text',  hint: 'e.g. 15' },
+      { key: 'logo_url',         label: 'Company Logo (Website)',    type: 'image', hint: 'Shown on website header/footer' },
+      { key: 'invoice_logo_url', label: 'Invoice Logo',             type: 'image', hint: 'Logo printed on PDF invoices — defaults to Company Logo if blank' },
     ]
   },
   {

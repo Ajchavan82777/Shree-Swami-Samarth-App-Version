@@ -51,12 +51,16 @@ function printInvoice(invoice, settings) {
 // ─── Invoice Preview Modal ────────────────────────────────────────────────────
 function PreviewModal({ invoice, onClose, company }) {
   const { get } = useContent();
-  const [template, setTemplate] = useState('classic');
-  const [themeName, setThemeName] = useState('Gold & Maroon');
-  const [font,      setFont]      = useState('Inter');
-  const [gstType,   setGstType]   = useState('sgst_cgst');
-  const [logo,      setLogo]      = useState(get('company','logo_url',''));
-  const [tab,       setTab]       = useState('preview'); // preview | settings
+  const settingsLogo = get('company','invoice_logo_url','') || get('company','logo_url','');
+  const [template,    setTemplate]    = useState('classic');
+  const [themeName,   setThemeName]   = useState('Gold & Maroon');
+  const [font,        setFont]        = useState('Inter');
+  const [gstType,     setGstType]     = useState(invoice.gst_type || 'sgst_cgst');
+  const [logo,        setLogo]        = useState('');
+  const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);
+  const [tab,         setTab]         = useState('preview');
+
+  const activeLogo = includeLogo ? (logo || settingsLogo) : '';
   const printRef = useRef(null);
 
   const handlePrint = () => {
@@ -114,9 +118,17 @@ function PreviewModal({ invoice, onClose, company }) {
           {GST_TYPES.map(g => <option key={g.value} value={g.value} style={{ color:'#000' }}>{g.label}</option>)}
         </select>
 
-        {/* Logo URL */}
-        <input value={logo} onChange={e=>setLogo(e.target.value)} placeholder="Logo URL (optional)"
-          style={{ padding:'5px 10px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, width:200 }} />
+        {/* Logo toggle */}
+        <label style={{ display:'flex', alignItems:'center', gap:6, color:'#fff', fontSize:12, cursor:'pointer', userSelect:'none' }}>
+          <input type="checkbox" checked={includeLogo} onChange={e=>setIncludeLogo(e.target.checked)}
+            style={{ width:14, height:14, accentColor:'var(--gold)', cursor:'pointer' }} />
+          Logo
+        </label>
+        {includeLogo && (
+          <input value={logo} onChange={e=>setLogo(e.target.value)}
+            placeholder={settingsLogo ? 'Override logo URL…' : 'Logo URL…'}
+            style={{ padding:'5px 10px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.1)', color:'#fff', fontSize:12, width:180 }} />
+        )}
 
         <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
           <button onClick={handlePrint} style={{ padding:'6px 14px', borderRadius:6, background:'var(--gold)', color:'var(--dark)', border:'none', cursor:'pointer', fontWeight:700, fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
@@ -129,7 +141,7 @@ function PreviewModal({ invoice, onClose, company }) {
       {/* Preview area */}
       <div style={{ flex:1, overflow:'auto', background:'#e5e7eb', padding:24 }}>
         <div ref={printRef} style={{ maxWidth:820, margin:'0 auto', background:'#fff', borderRadius:4, boxShadow:'0 4px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
-          <InvoicePreview invoice={invoice} template={template} themeName={themeName} font={font} logo={logo} gstType={gstType} company={company} />
+          <InvoicePreview invoice={invoice} template={template} themeName={themeName} font={font} logo={activeLogo} gstType={gstType} company={company} />
         </div>
       </div>
     </div>
@@ -138,6 +150,10 @@ function PreviewModal({ invoice, onClose, company }) {
 
 // ─── Invoice Form (Create / Edit) ─────────────────────────────────────────────
 function InvoiceForm({ onSave, onClose, company }) {
+  const { get: cget } = useContent();
+  // Prefer invoice_logo_url, fall back to logo_url from settings
+  const settingsLogo = cget('company','invoice_logo_url','') || cget('company','logo_url','');
+
   const [form, setForm] = useState({
     customer_name:'', company_name:'', email:'', phone:'',
     event_type:'', event_date:'', venue:'',
@@ -145,12 +161,13 @@ function InvoiceForm({ onSave, onClose, company }) {
     discount:0, tax_rate:18, gst_type:'sgst_cgst', advance_paid:0,
     notes:'', invoice_date: new Date().toISOString().split('T')[0], due_date:'',
   });
-  const [saving, setSaving] = useState(false);
-  const [tab, setTab]       = useState('form'); // form | preview
+  const [saving, setSaving]     = useState(false);
+  const [tab, setTab]           = useState('form');
   const [font,     setFont]      = useState('Inter');
   const [template, setTemplate]  = useState('classic');
   const [themeName,setThemeName] = useState('Gold & Maroon');
-  const [logo,     setLogo]      = useState('');
+  const [logo,     setLogo]      = useState(settingsLogo);
+  const [includeLogo, setIncludeLogo] = useState(!!settingsLogo);
   const [etSearch, setEtSearch]  = useState('');
   const [etOpen,   setEtOpen]    = useState(false);
 
@@ -168,6 +185,8 @@ function InvoiceForm({ onSave, onClose, company }) {
   const tax      = form.gst_type==='none' ? 0 : Math.round(taxable*(parseFloat(form.tax_rate)||0)/100*100)/100;
   const grand    = Math.round((taxable+tax)*100)/100;
   const balance  = Math.round((grand-(parseFloat(form.advance_paid)||0))*100)/100;
+
+  const activeLogo = includeLogo ? logo : '';
 
   const previewInvoice = {
     ...form, subtotal, tax_amount:tax, grand_total:grand, balance_due:balance,
@@ -327,9 +346,42 @@ function InvoiceForm({ onSave, onClose, company }) {
                   {FONTS.map(f=><option key={f} value={f} style={{ fontFamily:f }}>{f}</option>)}
                 </select>
               </FieldGroup>
-              <FieldGroup label="Logo URL (optional)">
-                <input className="form-input" value={logo} onChange={e=>setLogo(e.target.value)} placeholder="https://..." />
-              </FieldGroup>
+            </div>
+
+            {/* Logo row */}
+            <div style={{ marginTop:12, borderTop:'1px solid var(--border)', paddingTop:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', userSelect:'none', fontWeight:600, fontSize:13 }}>
+                  <input type="checkbox" checked={includeLogo} onChange={e=>setIncludeLogo(e.target.checked)}
+                    style={{ width:16, height:16, accentColor:'var(--gold)', cursor:'pointer' }} />
+                  Include Logo in Invoice
+                </label>
+                {settingsLogo && !includeLogo && (
+                  <span style={{ fontSize:11, color:'var(--text-light)' }}>Logo configured in Settings — check to include</span>
+                )}
+              </div>
+              {includeLogo && (
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ flex:1 }}>
+                    <input className="form-input" value={logo} onChange={e=>setLogo(e.target.value)}
+                      placeholder="Logo URL — leave blank to use logo from Settings" />
+                    {!logo && settingsLogo && (
+                      <p style={{ fontSize:11, color:'var(--text-light)', marginTop:4 }}>Using logo from Settings</p>
+                    )}
+                  </div>
+                  {(logo || settingsLogo) && (
+                    <img src={logo || settingsLogo} alt="logo preview"
+                      style={{ height:44, maxWidth:100, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, padding:4, background:'#fff' }}
+                      onError={e=>{ e.target.style.display='none'; }} />
+                  )}
+                  {logo && (
+                    <button onClick={()=>setLogo('')} title="Clear override"
+                      style={{ padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:11, color:'var(--error)' }}>
+                      ✕ Clear
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -345,7 +397,7 @@ function InvoiceForm({ onSave, onClose, company }) {
         <div style={{ width:460, flexShrink:0, overflow:'auto', background:'#e5e7eb', padding:16, borderLeft:'1px solid var(--border)', display: tab==='form'&&iw<900?'none':'block' }}>
           <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'1px', color:'#888', marginBottom:12, textAlign:'center' }}>Live Preview</p>
           <div style={{ background:'#fff', borderRadius:4, overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.1)', transformOrigin:'top center', transform:'scale(0.85)' }}>
-            <InvoicePreview invoice={previewInvoice} template={template} themeName={themeName} font={font} logo={logo} gstType={form.gst_type} company={DFLT_COMPANY} />
+            <InvoicePreview invoice={previewInvoice} template={template} themeName={themeName} font={font} logo={includeLogo ? (logo || settingsLogo) : ''} gstType={form.gst_type} company={company} />
           </div>
         </div>
       </div>

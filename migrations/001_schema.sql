@@ -170,6 +170,7 @@ CREATE TABLE invoices (
     advance_paid    NUMERIC(14,2) DEFAULT 0,
     balance_due     NUMERIC(14,2) DEFAULT 0,
     payment_status  VARCHAR(50)   NOT NULL DEFAULT 'unpaid',
+    gst_type        VARCHAR(20)   DEFAULT 'sgst_cgst',
     invoice_date    DATE,
     due_date        DATE,
     notes           TEXT,

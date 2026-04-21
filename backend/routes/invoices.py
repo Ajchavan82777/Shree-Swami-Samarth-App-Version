@@ -5,6 +5,11 @@ from models.db import get_sb
 invoices_bp = Blueprint("invoices", __name__)
 
 
+def _d(v):
+    """Return None for empty/falsy date strings so Postgres DATE column accepts them."""
+    return v if v else None
+
+
 def _payment_status(advance, grand_total):
     if advance <= 0:
         return "unpaid"
@@ -56,13 +61,14 @@ def create():
         "booking_id": d.get("booking_id"), "quotation_id": d.get("quotation_id"),
         "customer_name": d.get("customer_name"), "company_name": d.get("company_name"),
         "email": d.get("email"), "phone": d.get("phone"),
-        "event_type": d.get("event_type"), "event_date": d.get("event_date"),
+        "event_type": d.get("event_type"), "event_date": _d(d.get("event_date")),
         "venue": d.get("venue"), "items": items,
         "subtotal": subtotal, "discount": discount, "tax_rate": tax_rate,
         "tax_amount": tax_amt, "grand_total": grand,
         "advance_paid": advance, "balance_due": balance,
-        "payment_status": p_status, "invoice_date": d.get("invoice_date"),
-        "due_date": d.get("due_date"), "notes": d.get("notes"),
+        "payment_status": p_status, "invoice_date": _d(d.get("invoice_date")),
+        "due_date": _d(d.get("due_date")), "notes": d.get("notes"),
+        "gst_type": d.get("gst_type"),
     }
     result = get_sb().table("invoices").insert(row).execute()
     return jsonify(result.data[0]), 201
@@ -84,8 +90,9 @@ def update(id):
     subtotal, tax_amt, grand, balance, p_status = _calc_totals(items, discount, tax_rate, advance)
 
     allowed = {"customer_name", "company_name", "email", "phone", "event_type",
-               "event_date", "venue", "invoice_date", "due_date", "notes"}
-    sets = {k: v for k, v in d.items() if k in allowed}
+               "event_date", "venue", "invoice_date", "due_date", "notes", "gst_type"}
+    date_keys = {"event_date", "invoice_date", "due_date"}
+    sets = {k: (_d(v) if k in date_keys else v) for k, v in d.items() if k in allowed}
     sets.update({
         "items": items, "subtotal": subtotal, "discount": discount,
         "tax_rate": tax_rate, "tax_amount": tax_amt, "grand_total": grand,
